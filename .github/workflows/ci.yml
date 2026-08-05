@@ -1,0 +1,50 @@
+# 何を守っているか:
+# 「人間がdiffを読まない」前提のリポジトリで、壊れたコードがmainに入らないことを
+# 機械的に保証する最初のゲート(docs/prd.md 8.6「CIに置くジョブ」)。
+# lint/typecheckは型・ルールの逃げ道封鎖(any, as, eslint-disable禁止など)を、
+# unit testはSupabase起動なしで通るpure関数の検証を担保する。
+# db testとsupabase型検証はフェーズ1でSupabaseが入ってから別workflowに追加する。
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn lint
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn typecheck
+
+  unit-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: yarn
+      - run: yarn install --frozen-lockfile
+      - run: yarn test
