@@ -22,6 +22,12 @@
 | [`docs/testing.md`](docs/testing.md) | テストの書き方 |
 | [`CLAUDE.md`](CLAUDE.md) | AIエージェント向けの規約 |
 
+## タスク管理
+
+[GitHub Projects](https://github.com/users/jack0jp/projects/1)で進捗を管理する。
+各タスクはIssue化し、`phase:N`(`docs/roadmap.md` のフェーズ)と
+`agent:opus` / `agent:sonnet`(担当モデル)のラベルを付ける。
+
 ## セットアップ
 
 ```
