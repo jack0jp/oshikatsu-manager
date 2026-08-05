@@ -1,9 +1,15 @@
+import { fileURLToPath } from "node:url";
+import path from "node:path";
 import { defineConfig, globalIgnores } from "eslint/config";
 import js from "@eslint/js";
 import tseslint from "typescript-eslint";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import sonarjs from "eslint-plugin-sonarjs";
 import security from "eslint-plugin-security";
+
+// import.meta.dirname はNode.js 20.11+でのみ使えるため、CIのNodeバージョンに
+// 依存しないよう fileURLToPath で組み立てる。
+const dirname = path.dirname(fileURLToPath(import.meta.url));
 
 // 例外リスト。各エントリはルールと構造的に衝突するものだけを置く。
 // 1エントリにつき1つの理由をコメントで書き、理由が解消したらエントリごと消す。
@@ -26,11 +32,11 @@ const eslintConfig = defineConfig([
   // 型情報を要する4ルールのみ。tsconfigに含まれるTSファイルに限定する
   // (eslint.config.mjs 等の設定ファイルはTSプログラムに含まれないため対象外)。
   {
-    files: ["**/*.ts", "**/*.tsx"],
+    files: ["**/*.ts", "**/*.tsx", "**/*.mts"],
     languageOptions: {
       parserOptions: {
         projectService: true,
-        tsconfigRootDir: import.meta.dirname,
+        tsconfigRootDir: dirname,
       },
     },
     rules: {
