@@ -1,0 +1,24 @@
+# 何を守っているか:
+# Supabase無料枠は7日間の無操作でプロジェクトが一時停止され、復元するまでアクセス
+# できなくなる(バックアップ保持は0日)。日次で軽量クエリを投げ続けることで一時停止を
+# 防ぐ(docs/prd.md 8.6「keep-aliveについて」)。Vercel Cronではなくここに置くのは、
+# Hobbyプランのcron数制約を避け、CIと同じ場所に集約するため。
+# 本番Supabaseはフェーズ6で用意するため、このworkflowは現時点では骨格のみで
+# 接続先を持たない。フェーズ6で実クエリに差し替える。
+name: Keep Alive
+
+on:
+  schedule:
+    - cron: "0 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase (接続先未設定・骨格のみ)
+        run: |
+          echo "::notice::本番Supabaseの接続先が未設定のため、実クエリは送信しません(フェーズ6で接続予定)。"
