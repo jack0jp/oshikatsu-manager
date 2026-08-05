@@ -41,4 +41,3 @@ yarn dev
 
 このリポジトリは**人間がdiffを読まない前提**で運用する。品質は静的解析とテストで担保し、
 コードレビューは別モデルによる自動レビューをCIで回す。詳細は `CLAUDE.md` と `docs/` を参照。
-test direct push protection
