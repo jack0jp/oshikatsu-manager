@@ -13,6 +13,9 @@
     "react": "19.2.8",
     "react-dom": "19.2.8"
   },
+  "resolutions": {
+    "typescript": "^5"
+  },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
@@ -20,8 +23,11 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.3.0",
+    "eslint-plugin-security": "^4",
+    "eslint-plugin-sonarjs": "^4",
     "tailwindcss": "^4",
-    "typescript": "^5"
+    "typescript": "^5",
+    "typescript-eslint": "^8"
   },
   "packageManager": "yarn@1.22.22"
 }
