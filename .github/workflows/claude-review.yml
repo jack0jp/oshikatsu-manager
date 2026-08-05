@@ -42,6 +42,9 @@ jobs:
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           prompt: |
+            REPO: ${{ github.repository }}
+            PR NUMBER: ${{ github.event.pull_request.number }}
+
             このPRをレビューしてください。CLAUDE.mdとdocs/(prd.md, data-model.md,
             permissions.md, lint-policy.md, testing.md)の方針に沿っているかを重点的に見ること。
 
@@ -52,4 +55,11 @@ jobs:
               テスト(特に否定側のテスト)が伴っているか
             - 型を手書きせず、生成型かZodスキーマのz.inferから導出しているか
 
-            指摘はPRへのレビューコメントとして投稿してください。コードの自動修正は行わないこと。
+            PRのブランチは既にカレントディレクトリにチェックアウト済み。
+            全体の総評は `gh pr comment` で投稿すること。
+            特定の行に対する指摘は `mcp__github_inline_comment__create_inline_comment`
+            (`confirmed: true` を指定)でインラインコメントとして投稿すること。
+            コードの自動修正は行わないこと。指摘はGitHubへのコメント投稿でのみ行い、
+            メッセージ内のテキストとしては出力しないこと。
+          claude_args: |
+            --allowedTools "mcp__github_inline_comment__create_inline_comment,Bash(gh pr comment:*),Bash(gh pr diff:*),Bash(gh pr view:*)"
