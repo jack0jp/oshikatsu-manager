@@ -8,6 +8,7 @@
 ## ドキュメント
 
 - 仕様・スコープ・決定事項 → `docs/prd.md`
+- 開発の進め方とフェーズ分割 → `docs/roadmap.md`
 - データモデル → `docs/data-model.md`
 - **権限マトリクスとRLSの検証要件 → `docs/permissions.md`。権限に関わるコードを触る前に必ず読む**
 - **lint/型の運用方針と例外の作法 → `docs/lint-policy.md`。lintエラーを消す前に必ず読む**

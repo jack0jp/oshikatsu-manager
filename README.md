@@ -15,6 +15,7 @@
 | ファイル | 内容 |
 |---|---|
 | [`docs/prd.md`](docs/prd.md) | 仕様、スコープ、決定事項 |
+| [`docs/roadmap.md`](docs/roadmap.md) | 開発計画、フェーズ分割 |
 | [`docs/data-model.md`](docs/data-model.md) | データモデル設計 |
 | [`docs/permissions.md`](docs/permissions.md) | 権限マトリクスとRLSの検証要件 |
 | [`docs/lint-policy.md`](docs/lint-policy.md) | lint/型の運用方針、例外の作法 |
