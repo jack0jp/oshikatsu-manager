@@ -1,4 +1,4 @@
-# 開発計画 (v0.4)
+# 開発計画 (v0.5)
 
 `docs/prd.md` v0.5 のMVPスコープを、実装可能な順序に並べたもの。
 
@@ -54,9 +54,11 @@
   - [ ] unit test
   - [ ] db test(フェーズ1でSupabaseが入るまでは空で通る)
   - [ ] supabase型検証(`yarn gen:types` して差分があれば失敗)
-  - [x] 自動コードレビュー: Claude(`claude-review.yml`)/ Codex(`codex-review.yml`)の骨格を導入済み。
-        シークレット未設定の間は自動でスキップされる(下記「保留: 外部アカウント待ち」参照)
-  - [ ] 自動コードレビュー: GitHub Copilotの自動レビュー(下記「保留: 外部アカウント待ち」参照)
+  - [x] 自動コードレビュー: Claude(`claude-review.yml`)本稼働。実際にPRへ総評+インライン
+        コメントを投稿することを確認済み。Codex(`codex-review.yml`)はOPENAI_API_KEY未設定の
+        間シークレット未設定の間は自動でスキップされる(下記「保留: 外部アカウント待ち」参照)
+  - [x] 自動コードレビュー: GitHub Copilotの自動レビュー。Ruleset(`copilot_code_review`)で
+        有効化済み。PR作成時・push毎に自動でレビューコメントを投稿することを確認済み
   - [ ] keep-alive(日次。向き先は本番ができるフェーズ6で設定)
 - [ ] 各workflowの先頭に「これが何を守っているか」のコメントを書く
 
@@ -77,13 +79,13 @@
 ### 保留: 外部アカウント待ち
 
 コードの問題ではなく、あなたのアカウント側の準備待ちのタスク。MVPスコープ外ではないので
-フェーズ2バックログには入れない。準備でき次第、いつでも着手してよい。
+フェーズ2バックログには入れない。
 
-| タスク | 必要なもの | やること |
-|---|---|---|
-| Claudeレビューの本稼働化 | Claude Pro/Maxサブスクリプション(取得済み) | ローカルで `claude setup-token` を実行し、発行したトークンを `CLAUDE_CODE_OAUTH_TOKEN` としてリポジトリシークレットに追加する |
-| Codexレビューの本稼働化 | OpenAI APIキー | platform.openai.comでAPIキーを発行し、`OPENAI_API_KEY` としてリポジトリシークレットに追加する |
-| Copilot自動レビューの有効化 | GitHub Copilot Pro/Pro+/Business等の有料プラン(現在は無料プランのため未加入) | プラン加入後、リポジトリRulesetに `copilot_code_review` ルールを追加する |
+| タスク | 状態 |
+|---|---|
+| Claudeレビューの本稼働化 | **完了。** `CLAUDE_CODE_OAUTH_TOKEN` シークレット追加 + GitHub App([github.com/apps/claude](https://github.com/apps/claude))インストール済み。PRへの総評+インラインコメント投稿を実PRで確認済み |
+| Copilot自動レビューの有効化 | **完了。** Copilot Proに加入し、Rulesetに `copilot_code_review` ルールを追加。実PRでのコメント投稿を確認済み |
+| Codexレビューの本稼働化 | **保留(意図的)。** OpenAI APIキーを取得しない方針のため、`codex-review.yml` はシークレット未設定のまま自動スキップし続ける。将来キーを取得したら `OPENAI_API_KEY` をリポジトリシークレットに追加するだけで動き出す |
 
 > シークレットは `gh secret set <NAME>` などリポジトリの設定画面から**あなた自身が追加すること**。
 > Claudeにトークン・APIキーの値を渡さない。
@@ -304,3 +306,4 @@ MVPのスコープ外。**利用者を家族・友人に広げるタイミング
 | v0.2 | `is_admin` の扱いを決定(カラムのみMVP、権限判定は未実装)。「フェーズ2バックログ」を新設し、管理者画面と強制削除の着手条件・実装手順を記載 |
 | v0.3 | GitHub Issues/Projectsによるタスク管理を追加。フェーズ0のチェックリストをIssue化し、Project「推し活管理アプリ 開発」に登録 |
 | v0.4 | mainブランチをRulesetで保護(PR必須・force push禁止・削除禁止・管理者バイパス可)。Claude/Codexの自動レビューworkflow骨格を導入(シークレット未設定時は自動スキップ)。「保留: 外部アカウント待ち」を新設し、Copilot自動レビューの有効化とシークレット設定の作業を記載 |
+| v0.5 | Claude自動レビューを本稼働化(id-token権限とコメント投稿手段の指示が不足していた不具合を修正し、実PRで動作確認)。Copilot自動レビューをRulesetで有効化し動作確認。Codexレビューは意図的に保留(APIキーを取得しない方針) |
