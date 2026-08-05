@@ -28,6 +28,12 @@
 各タスクはIssue化し、`phase:N`(`docs/roadmap.md` のフェーズ)と
 `agent:opus` / `agent:sonnet`(担当モデル)のラベルを付ける。
 
+## ブランチ運用
+
+mainブランチは保護されており、直接pushできない。ブランチを作成しPR経由でマージする。
+PR作成時にClaude/Codexによる自動レビューが走る(有効化の手順は`docs/roadmap.md`
+「保留: 外部アカウント待ち」を参照)。
+
 ## セットアップ
 
 ```
