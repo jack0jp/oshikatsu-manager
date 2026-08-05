@@ -89,4 +89,8 @@ jobs:
 
       - name: supabase/types.ts に差分がないことを確認
         if: steps.check.outputs.initialized == 'true'
-        run: git diff --exit-code -- supabase/types.ts
+        # git diff だけだと未追跡ファイル(コミットし忘れ)を検出できないため、
+        # 一旦stageしてから差分を見る。既存の内容と一致していればstageしても差分は出ない。
+        run: |
+          git add -A -- supabase/types.ts
+          git diff --cached --exit-code -- supabase/types.ts
