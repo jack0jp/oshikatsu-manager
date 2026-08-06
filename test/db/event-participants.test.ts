@@ -82,6 +82,27 @@ test("招待時にvisibilityをpublicへ上書きしようとすると失敗す�
   expect(error).not.toBeNull();
 });
 
+test("招待時にparticipation_stateを上書きしようとすると失敗する", async () => {
+  const [owner, inviter, invitee] = await Promise.all([
+    createTestUser(),
+    createTestUser(),
+    createTestUser(),
+  ]);
+  const event = await createEvent(owner);
+  await inviter.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: inviter.userId, status: "considering" });
+
+  const { error } = await inviter.client.from("event_participants").insert({
+    event_id: event.id,
+    user_id: invitee.userId,
+    invited_by: inviter.userId,
+    status: "considering",
+    participation_state: "invited",
+  });
+  expect(error).not.toBeNull();
+});
+
 test("参加登録していないユーザーは他人を招待できない", async () => {
   const [owner, nonParticipant, invitee] = await Promise.all([
     createTestUser(),
