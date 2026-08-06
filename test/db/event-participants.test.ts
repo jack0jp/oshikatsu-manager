@@ -60,6 +60,22 @@ test("参加登録済みユーザーは他人を招待でき、招待された�
   expect(rpcCheck.error).toBeNull();
   expect(rpcCheck.data).toBe(true);
 
+  // 診断: WITH CHECKの各条件を実際に挿入する値で個別に評価する
+  const breakdown = await inviter.client.rpc("debug_invite_check", {
+    p_event_id: event.id,
+    p_invited_by: inviter.userId,
+    p_visibility: "private",
+    p_participation_state: "joined",
+  });
+  expect(breakdown.error).toBeNull();
+  expect(breakdown.data).toEqual({
+    auth_uid: inviter.userId,
+    invited_by_matches: true,
+    visibility_matches: true,
+    participation_state_matches: true,
+    is_participant: true,
+  });
+
   const { data, error } = await inviter.client
     .from("event_participants")
     .insert({
