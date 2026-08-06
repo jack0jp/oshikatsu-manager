@@ -6,8 +6,15 @@ reviews:
     enabled: true
     # デフォルトはdraft PRをスキップするが、このリポジトリはDraftで
     # Claude/Codexと反復してからReady化する運用(CLAUDE.md「ブランチとPR」)。
-    # CodeRabbitは無料枠のためCopilotと違いdraft中も含めて都度レビューさせる。
+    # CodeRabbitはCopilotと違いdraft中も含めて都度レビュー対象にする
+    # (実際に消費するのはFreeプランのレート制限: GitHub連携のPRレビューは
+    # 1回/時/開発者。1時間に複数pushしても2回目以降はスキップされうる。
+    # 詳細: https://docs.coderabbit.ai/management/plans)
     drafts: true
+    # 既定値5だと5コミット分レビューした時点で自動レビューが止まり、以降は
+    # `@coderabbitai review` の手動実行が必要になる。pushのたびに反復する
+    # 運用と相性が悪いため無効化する(実際の頻度はFreeプランのレート制限が握る)。
+    auto_pause_after_reviewed_commits: 0
   path_instructions:
     - path: "**/*.{ts,tsx}"
       instructions: |
@@ -20,13 +27,18 @@ reviews:
     - path: "supabase/migrations/**"
       instructions: |
         docs/data-model.md・docs/permissions.md の権限マトリクスと突き合わせて確認すること。
-        RLSポリシー内の自己参照サブクエリ(同一テーブルを問い合わせるEXISTS等)は
-        呼び出し元のRLS越しに評価され、本来見えるべき行が見えず誤判定することがある
-        (security definer関数でラップする必要がないか確認する)。
+        - RLSポリシー内の自己参照サブクエリ(同一テーブルを問い合わせるEXISTS等)は
+          呼び出し元のRLS越しに評価され、本来見えるべき行が見えず誤判定することがある
+          (security definer関数でラップする必要がないか確認する)
+        - security definer関数を使う場合、`set search_path = ''`または安全な固定値を
+          必須にし、内部の参照はスキーマ修飾名(`public.xxx`)にしているか。
+          `PUBLIC`ロールへの不要なEXECUTE権限が残っていないか(必要なロールにのみGRANTする)
     - path: "test/db/**"
       instructions: |
         docs/testing.md・docs/permissions.md「RLS検証の必須要件」に沿っているか確認すること。
         - service_roleキーを使っていないか
-        - 否定側のテストが、UPDATE/DELETEのRETURNINGやSELECTが空であることだけで
-          「弾かれた」と誤認していないか(USING句が壊れていても同じ結果になりうる)。
-          対象行を見られる側の視点で値が実際に変化していないことまで確認しているか
+        - 否定側のテストが、対象行を見られない側から実行した結果(RETURNINGやSELECTが空)
+          だけで判定していないか。`WHERE`不一致で0件なのか、RLSで正しく弾かれて0件なのかは
+          その視点からは区別できない。UPDATEは対象行を見られる側の視点で値が変化していない
+          ことを、DELETEは行が存在し続けていることを、INSERTは新しい行が作られていない
+          ことを、それぞれ確認しているか

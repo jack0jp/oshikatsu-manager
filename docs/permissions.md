@@ -75,7 +75,7 @@ service_roleはRLSをバイパスする。これで通ったテストは、**RLS
 
 正常系だけのテストは、権限が全開放されていても通る。否定側が本体。
 
-```
+```typescript
 // これだけでは何も検証していない
 expect(await asUserA.from("expenses").select()).toHaveLength(3);
 
@@ -83,14 +83,19 @@ expect(await asUserA.from("expenses").select()).toHaveLength(3);
 expect(await asUserB.from("expenses").select()).toHaveLength(0);
 ```
 
-**UPDATE/DELETEの`RETURNING`が空であることだけで判定しない。**
-`UPDATE ... RETURNING` / `DELETE ... RETURNING` は、対象行がUSING句で弾かれた場合だけでなく、
-USING句が壊れていて実際には書き換え・削除できてしまっている場合でも、その行をSELECTポリシー上
-見せられなければ同じく空配列を返す。RETURNINGが空であることは「USING句が効いている」ことを
-何も証明しない。
+**UPDATE/DELETEが「成功したかに見える」結果だけで判定しない。**
+PostgreSQLのRLSでは、UPDATE/DELETEは対象コマンド自身のUSING句に加えて、テーブルのSELECTポリシーに
+よる可視性も要求する。`UPDATE ... RETURNING`は、更新後の行がSELECTポリシーを満たさないと
+エラー(`new row violates row-level security policy`)で失敗する。`DELETE`はSELECTポリシーを
+満たさない行がそもそも削除候補から除外されるため、対象を見つけられず0件になる。
 
-```
-// これだけでは何も検証していない(USING句が壊れていても同じ結果になりうる)
+つまり「RETURNINGが空で、エラーも出ない」という結果だけでは、(a) `WHERE`条件に一致する行が
+最初から無かったのか、(b) USING句/SELECT可視性によって正しく弾かれたのか、を区別できない。
+UPDATE/DELETEを試みた後は、対象行を見られる側(本人など)の視点で、値が実際に
+変化していないこと・行が存在し続けていることまで確認する。
+
+```typescript
+// これだけでは何も検証していない(WHERE不一致で0件なのか、正しく弾かれて0件なのか区別できない)
 const { data } = await asUserB.from("expenses").update({ amount: 1 }).eq("id", id).select();
 expect(data).toHaveLength(0);
 
