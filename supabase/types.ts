@@ -34,7 +34,296 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      budgets: {
+        Row: {
+          amount: number
+          created_at: string
+          genre: string | null
+          id: string
+          period_start: string
+          period_type: string
+          user_id: string
+        }
+        Insert: {
+          amount: number
+          created_at?: string
+          genre?: string | null
+          id?: string
+          period_start: string
+          period_type: string
+          user_id: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          genre?: string | null
+          id?: string
+          period_start?: string
+          period_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budgets_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      event_participants: {
+        Row: {
+          created_at: string
+          event_id: string
+          id: string
+          invited_by: string | null
+          participation_state: string
+          status: string
+          updated_at: string
+          user_id: string
+          visibility: string
+        }
+        Insert: {
+          created_at?: string
+          event_id: string
+          id?: string
+          invited_by?: string | null
+          participation_state?: string
+          status: string
+          updated_at?: string
+          user_id: string
+          visibility?: string
+        }
+        Update: {
+          created_at?: string
+          event_id?: string
+          id?: string
+          invited_by?: string | null
+          participation_state?: string
+          status?: string
+          updated_at?: string
+          user_id?: string
+          visibility?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "event_participants_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_participants_invited_by_fkey"
+            columns: ["invited_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "event_participants_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      events: {
+        Row: {
+          created_at: string
+          deleted_at: string | null
+          ends_at: string | null
+          genre: string
+          id: string
+          memo: string | null
+          owner_id: string
+          source_url: string | null
+          starts_at: string
+          title: string
+          updated_at: string
+          venue: string | null
+        }
+        Insert: {
+          created_at?: string
+          deleted_at?: string | null
+          ends_at?: string | null
+          genre: string
+          id?: string
+          memo?: string | null
+          owner_id: string
+          source_url?: string | null
+          starts_at: string
+          title: string
+          updated_at?: string
+          venue?: string | null
+        }
+        Update: {
+          created_at?: string
+          deleted_at?: string | null
+          ends_at?: string | null
+          genre?: string
+          id?: string
+          memo?: string | null
+          owner_id?: string
+          source_url?: string | null
+          starts_at?: string
+          title?: string
+          updated_at?: string
+          venue?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "events_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      expenses: {
+        Row: {
+          actual_amount: number | null
+          category: string
+          created_at: string
+          event_id: string
+          id: string
+          memo: string | null
+          planned_amount: number | null
+          spent_on: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          actual_amount?: number | null
+          category: string
+          created_at?: string
+          event_id: string
+          id?: string
+          memo?: string | null
+          planned_amount?: number | null
+          spent_on?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          actual_amount?: number | null
+          category?: string
+          created_at?: string
+          event_id?: string
+          id?: string
+          memo?: string | null
+          planned_amount?: number | null
+          spent_on?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "expenses_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "expenses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          email: string
+          id: string
+          is_admin: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          email: string
+          id: string
+          is_admin?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          email?: string
+          id?: string
+          is_admin?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ticket_entries: {
+        Row: {
+          created_at: string
+          entry_closes_at: string | null
+          entry_opens_at: string | null
+          entry_type: string
+          event_id: string
+          id: string
+          memo: string | null
+          provider: string | null
+          result: string | null
+          result_announced_at: string | null
+          sale_starts_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          entry_closes_at?: string | null
+          entry_opens_at?: string | null
+          entry_type: string
+          event_id: string
+          id?: string
+          memo?: string | null
+          provider?: string | null
+          result?: string | null
+          result_announced_at?: string | null
+          sale_starts_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          entry_closes_at?: string | null
+          entry_opens_at?: string | null
+          entry_type?: string
+          event_id?: string
+          id?: string
+          memo?: string | null
+          provider?: string | null
+          result?: string | null
+          result_announced_at?: string | null
+          sale_starts_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_entries_event_id_fkey"
+            columns: ["event_id"]
+            isOneToOne: false
+            referencedRelation: "events"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_entries_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
