@@ -35,24 +35,28 @@ test("参加登録済みユーザーは他人を招待でき、招待された�
     createTestUser(),
   ]);
   const event = await createEvent(owner);
-  const selfRegister = await inviter.client
+  await inviter.client
     .from("event_participants")
-    .insert({ event_id: event.id, user_id: inviter.userId, status: "considering" })
-    .select()
-    .single();
-  expect(selfRegister.error).toBeNull();
+    .insert({ event_id: event.id, user_id: inviter.userId, status: "considering" });
 
-  const { data, error } = await inviter.client
-    .from("event_participants")
-    .insert({
-      event_id: event.id,
-      user_id: invitee.userId,
-      invited_by: inviter.userId,
-      status: "considering",
-    })
-    .select()
-    .single();
+  // 招待INSERT自体はRETURNINGしない。招待者(inviter)はinvitee宛ての非公開行を
+  // SELECTポリシー上読めない(user_id=invitee, visibility=private)ため、
+  // INSERT ... RETURNINGがRLSに阻まれてしまう(招待者が読めないのは意図通りの挙動)。
+  const { error } = await inviter.client.from("event_participants").insert({
+    event_id: event.id,
+    user_id: invitee.userId,
+    invited_by: inviter.userId,
+    status: "considering",
+  });
   expect(error).toBeNull();
+
+  // 作成された行の中身は、招待された本人(invitee)の視点で確認する。
+  const { data } = await invitee.client
+    .from("event_participants")
+    .select()
+    .eq("event_id", event.id)
+    .eq("user_id", invitee.userId)
+    .single();
   expect(data?.visibility).toBe("private");
   expect(data?.participation_state).toBe("joined");
 });

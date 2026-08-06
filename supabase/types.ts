@@ -385,19 +385,7 @@ export type Database = {
       }
     }
     Functions: {
-      debug_invite_check: {
-        Args: {
-          p_event_id: string
-          p_invited_by: string
-          p_participation_state: string
-          p_visibility: string
-        }
-        Returns: Json
-      }
-      is_event_participant: {
-        Args: { p_event_id: string; p_user_id: string }
-        Returns: boolean
-      }
+      [_ in never]: never
     }
     Enums: {
       [_ in never]: never
