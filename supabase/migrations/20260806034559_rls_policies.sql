@@ -2,7 +2,13 @@
 -- RLSポリシー。全ポリシーは authenticated ロールのみを対象とする(このアプリはGoogle SSO
 -- ログイン前提で、匿名ユーザー向けの公開閲覧機能は無い)。
 --
--- profiles.is_admin を参照する条件は一切書かない(MVPスコープ外。docs/permissions.md参照)。
+-- 「profiles.is_adminを参照する条件は一切書かない」(docs/permissions.md)とは、is_adminの値を
+-- 使って他の操作の許可/拒否を分岐させないという意味。is_adminという列自体を本人の書き換えから
+-- 保護するguard_is_admin_immutable()はこれに抵触しない(権限判定ではなく列の保護)。
+--
+-- Supabase Data APIはauto_expose_new_tables=false(既定)のため、RLSポリシーとは別に
+-- 各テーブルへのGRANTが無いとauthenticatedロールからAPI経由で一切操作できない。
+-- 本ファイル末尾で全テーブルにGRANTする。
 
 -- 1. profiles (docs/data-model.md「RLSポリシー方針」)
 -- SELECTの「全ユーザー(公開カラムは限定)」はRLS(行単位)だけでは表現できないため、
@@ -209,3 +215,11 @@ create policy "budgets_update_own" on public.budgets
 create policy "budgets_delete_own" on public.budgets
   for delete to authenticated
   using (user_id = auth.uid());
+
+-- Data API (PostgREST) 経由のアクセスには、RLSポリシーとは別にテーブル自体へのGRANTが必要
+-- (supabase/config.tomlのauto_expose_new_tablesが既定でfalseのため)。
+-- 実際の可否はRLSポリシーが絞る。
+grant select, insert, update, delete
+  on public.profiles, public.events, public.event_participants,
+     public.ticket_entries, public.expenses, public.budgets
+  to authenticated;
