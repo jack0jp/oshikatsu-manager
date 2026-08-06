@@ -77,15 +77,19 @@ service_roleはRLSをバイパスする。これで通ったテストは、**RLS
 
 ```typescript
 // これだけでは何も検証していない
-expect(await asUserA.from("expenses").select()).toHaveLength(3);
+const { data: dataA } = await asUserA.from("expenses").select();
+expect(dataA).toHaveLength(3);
 
 // これが本体
-expect(await asUserB.from("expenses").select()).toHaveLength(0);
+const { data: dataB } = await asUserB.from("expenses").select();
+expect(dataB).toHaveLength(0);
 ```
 
 **UPDATE/DELETEが「成功したかに見える」結果だけで判定しない。**
-PostgreSQLのRLSでは、UPDATE/DELETEは対象コマンド自身のUSING句に加えて、テーブルのSELECTポリシーに
-よる可視性も要求する。`UPDATE ... RETURNING`は、更新後の行がSELECTポリシーを満たさないと
+PostgreSQLのRLSでは、`WHERE`や`RETURNING`が対象テーブルの列を参照するUPDATE/DELETE
+(このリポジトリのテストは`.eq("id", id)`などのWHEREを必ず伴うため該当する)は、対象コマンド
+自身のUSING句に加えて、テーブルのSELECTポリシーによる可視性も要求する。
+`UPDATE ... RETURNING`は、更新後の行がSELECTポリシーを満たさないと
 エラー(`new row violates row-level security policy`)で失敗する。`DELETE`はSELECTポリシーを
 満たさない行がそもそも削除候補から除外されるため、対象を見つけられず0件になる。
 

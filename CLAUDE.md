@@ -50,10 +50,12 @@
 mainはRulesetで保護されており、リポジトリ管理者(あなた)のみ緊急時にバイパスできる。
 
 **PRはまずDraftで作成する。**
-Claude(`claude-review.yml`)・Codex(`codex-review.yml`)・CodeRabbit(`.coderabbit.yaml`、
-`drafts: true`)はdraftでもpushのたびに走るが、GitHub Copilotの自動レビュー
-(`copilot_code_review` Ruleset)は`review_draft_pull_requests: false`に設定済みのため
-draft中は走らない。Draftで指摘がなくなるまで反復し、`gh pr ready`でReady for reviewに
+Claude(`claude-review.yml`)はdraftのpushごとに走る。Codexは`OPENAI_API_KEY`設定時
+(`codex-review.yml`)、CodeRabbitは`drafts: true`(`.coderabbit.yaml`)でdraft中も
+レビュー対象になるが、CodeRabbitはFreeプランのレート制限を受ける(下記参照)。
+GitHub Copilotの自動レビュー(`copilot_code_review` Ruleset)は
+`review_draft_pull_requests: false`に設定済みのためdraft中は走らない。
+Draftで指摘がなくなるまで反復し、`gh pr ready`でReady for reviewに
 変えたタイミングでCopilotの最終レビューを1回受ける。Copilotは1レビューあたり
 プレミアムリクエストを消費するため、Claude/Codex/CodeRabbitとの反復で消費しないように
 するための運用(PR #18〜#32の実績分析に基づく判断)。
