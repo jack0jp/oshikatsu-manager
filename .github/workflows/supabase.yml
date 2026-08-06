@@ -53,6 +53,12 @@ jobs:
       - run: supabase start
         if: steps.check.outputs.initialized == 'true'
 
+      # test/db/ が認証済みクライアントでRLSを検証するために接続情報を渡す。
+      # service_roleキーはエクスポートしない(test/db/では使わない。docs/permissions.md)。
+      - name: Export local Supabase connection info
+        if: steps.check.outputs.initialized == 'true'
+        run: supabase status -o env --override-name api.url=API_URL --override-name auth.anon_key=ANON_KEY >> "$GITHUB_ENV"
+
       - run: yarn test:db
 
   types-check:

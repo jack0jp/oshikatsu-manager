@@ -1,0 +1,211 @@
+import { expect, test } from "vitest";
+import { createEvent, createTestUser } from "./helpers";
+
+test("自分で参加登録できる", async () => {
+  const [owner, self] = await Promise.all([createTestUser(), createTestUser()]);
+  const event = await createEvent(owner);
+
+  const { data, error } = await self.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: self.userId, status: "considering" })
+    .select()
+    .single();
+  expect(error).toBeNull();
+  expect(data?.visibility).toBe("private");
+});
+
+test("他人になりすまして参加登録できない", async () => {
+  const [owner, actor, victim] = await Promise.all([
+    createTestUser(),
+    createTestUser(),
+    createTestUser(),
+  ]);
+  const event = await createEvent(owner);
+
+  const { error } = await actor.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: victim.userId, status: "considering" });
+  expect(error).not.toBeNull();
+});
+
+test("参加登録済みユーザーは他人を招待でき、招待された行はprivate/joinedに固定される", async () => {
+  const [owner, inviter, invitee] = await Promise.all([
+    createTestUser(),
+    createTestUser(),
+    createTestUser(),
+  ]);
+  const event = await createEvent(owner);
+  await inviter.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: inviter.userId, status: "considering" });
+
+  const { data, error } = await inviter.client
+    .from("event_participants")
+    .insert({
+      event_id: event.id,
+      user_id: invitee.userId,
+      invited_by: inviter.userId,
+      status: "considering",
+    })
+    .select()
+    .single();
+  expect(error).toBeNull();
+  expect(data?.visibility).toBe("private");
+  expect(data?.participation_state).toBe("joined");
+});
+
+test("招待時にvisibilityをpublicへ上書きしようとすると失敗する", async () => {
+  const [owner, inviter, invitee] = await Promise.all([
+    createTestUser(),
+    createTestUser(),
+    createTestUser(),
+  ]);
+  const event = await createEvent(owner);
+  await inviter.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: inviter.userId, status: "considering" });
+
+  const { error } = await inviter.client.from("event_participants").insert({
+    event_id: event.id,
+    user_id: invitee.userId,
+    invited_by: inviter.userId,
+    status: "considering",
+    visibility: "public",
+  });
+  expect(error).not.toBeNull();
+});
+
+test("参加登録していないユーザーは他人を招待できない", async () => {
+  const [owner, nonParticipant, invitee] = await Promise.all([
+    createTestUser(),
+    createTestUser(),
+    createTestUser(),
+  ]);
+  const event = await createEvent(owner);
+
+  const { error } = await nonParticipant.client.from("event_participants").insert({
+    event_id: event.id,
+    user_id: invitee.userId,
+    invited_by: nonParticipant.userId,
+    status: "considering",
+  });
+  expect(error).not.toBeNull();
+});
+
+test("本人は自分の参加行のvisibilityを変更できる", async () => {
+  const [owner, self] = await Promise.all([createTestUser(), createTestUser()]);
+  const event = await createEvent(owner);
+  await self.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: self.userId, status: "considering" });
+
+  const { error } = await self.client
+    .from("event_participants")
+    .update({ visibility: "public" })
+    .eq("event_id", event.id)
+    .eq("user_id", self.userId);
+  expect(error).toBeNull();
+
+  const { data } = await self.client
+    .from("event_participants")
+    .select("visibility")
+    .eq("event_id", event.id)
+    .eq("user_id", self.userId)
+    .single();
+  expect(data?.visibility).toBe("public");
+});
+
+test("他人の参加行を更新・削除できない", async () => {
+  const [owner, target, actor] = await Promise.all([
+    createTestUser(),
+    createTestUser(),
+    createTestUser(),
+  ]);
+  const event = await createEvent(owner);
+  await target.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: target.userId, status: "considering" });
+
+  const { data: updated, error: updateError } = await actor.client
+    .from("event_participants")
+    .update({ status: "declined" })
+    .eq("event_id", event.id)
+    .eq("user_id", target.userId)
+    .select();
+  expect(updateError).toBeNull();
+  expect(updated).toHaveLength(0);
+
+  const { data: deleted, error: deleteError } = await actor.client
+    .from("event_participants")
+    .delete()
+    .eq("event_id", event.id)
+    .eq("user_id", target.userId)
+    .select();
+  expect(deleteError).toBeNull();
+  expect(deleted).toHaveLength(0);
+});
+
+test("本人は自分の参加登録を取りやめられる", async () => {
+  const [owner, self] = await Promise.all([createTestUser(), createTestUser()]);
+  const event = await createEvent(owner);
+  await self.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: self.userId, status: "considering" });
+
+  const { error } = await self.client
+    .from("event_participants")
+    .delete()
+    .eq("event_id", event.id)
+    .eq("user_id", self.userId);
+  expect(error).toBeNull();
+
+  const { data } = await self.client
+    .from("event_participants")
+    .select()
+    .eq("event_id", event.id)
+    .eq("user_id", self.userId);
+  expect(data).toHaveLength(0);
+});
+
+test("非公開の参加行は他ユーザーから見えない", async () => {
+  const [owner, self, stranger] = await Promise.all([
+    createTestUser(),
+    createTestUser(),
+    createTestUser(),
+  ]);
+  const event = await createEvent(owner);
+  await self.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: self.userId, status: "considering" });
+
+  const { data, error } = await stranger.client
+    .from("event_participants")
+    .select()
+    .eq("event_id", event.id)
+    .eq("user_id", self.userId);
+  expect(error).toBeNull();
+  expect(data).toHaveLength(0);
+});
+
+test("公開の参加行は他ユーザーからも見える", async () => {
+  const [owner, self, stranger] = await Promise.all([
+    createTestUser(),
+    createTestUser(),
+    createTestUser(),
+  ]);
+  const event = await createEvent(owner);
+  await self.client.from("event_participants").insert({
+    event_id: event.id,
+    user_id: self.userId,
+    status: "considering",
+    visibility: "public",
+  });
+
+  const { data, error } = await stranger.client
+    .from("event_participants")
+    .select()
+    .eq("event_id", event.id)
+    .eq("user_id", self.userId);
+  expect(error).toBeNull();
+  expect(data).toHaveLength(1);
+});
