@@ -33,6 +33,26 @@ test("無関係のユーザーは他人のイベントを編集できない", as
   expect(unchanged?.title).toBe("test event");
 });
 
+test("オーナー以外がイベントを削除しようとして失敗する", async () => {
+  const [owner, stranger] = await Promise.all([createTestUser(), createTestUser()]);
+  const event = await createEvent(owner);
+
+  const { data, error } = await stranger.client
+    .from("events")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", event.id)
+    .select();
+  expect(error).toBeNull();
+  expect(data).toHaveLength(0);
+
+  const { data: unchanged } = await owner.client
+    .from("events")
+    .select("deleted_at")
+    .eq("id", event.id)
+    .single();
+  expect(unchanged?.deleted_at).toBeNull();
+});
+
 test("他人になりすましてイベントを登録できない", async () => {
   const [userA, userB] = await Promise.all([createTestUser(), createTestUser()]);
   const { error } = await userA.client.from("events").insert({

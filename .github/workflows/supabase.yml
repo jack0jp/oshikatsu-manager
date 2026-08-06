@@ -60,8 +60,12 @@ jobs:
         # supabase status -o env は値をダブルクォートで囲んで出力するが、
         # GITHUB_ENV はクォートを解釈しないため、そのまま渡すと値にクォートが
         # 含まれてしまう(例: API_URL が `"http://127.0.0.1:54321"` になる)。
+        # --override-nameは指定したキーの出力名を変えるだけで、SERVICE_ROLE_KEY等の
+        # 他のキーはそのまま出力に残る。API_URL/ANON_KEY以外がGITHUB_ENVに
+        # 紛れ込まないよう、grepで対象の2行だけに絞ってから渡す。
         run: |
           supabase status -o env --override-name api.url=API_URL --override-name auth.anon_key=ANON_KEY \
+            | grep -E '^(API_URL|ANON_KEY)=' \
             | sed 's/^\([A-Z_]*\)="\(.*\)"$/\1=\2/' >> "$GITHUB_ENV"
 
       - run: yarn test:db
