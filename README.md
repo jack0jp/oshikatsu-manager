@@ -43,7 +43,7 @@ Supabase CLIは `.github/workflows/supabase.yml` の `SUPABASE_CLI_VERSION` と�
 ```
 yarn install
 cp .env.example .env.local   # Supabaseの接続情報を設定
-npx supabase@2.111.0 start   # ローカルDB(Dockerが必要)
+npx supabase@2.111.0 start   # ローカルDB(Dockerが必要。バージョンは.github/workflows/supabase.ymlのSUPABASE_CLI_VERSIONと同じ値にすること)
 yarn dev
 ```
 
