@@ -51,6 +51,15 @@ test("参加登録済みユーザーは他人を招待でき、招待された�
   expect(visibilityCheck.error).toBeNull();
   expect(visibilityCheck.data).toHaveLength(1);
 
+  // 診断: is_event_participant()をinviterのセッションから直接RPC呼び出しし、
+  // 権限(EXECUTE)とロジックのどちらの問題かを切り分ける
+  const rpcCheck = await inviter.client.rpc("is_event_participant", {
+    p_event_id: event.id,
+    p_user_id: inviter.userId,
+  });
+  expect(rpcCheck.error).toBeNull();
+  expect(rpcCheck.data).toBe(true);
+
   const { data, error } = await inviter.client
     .from("event_participants")
     .insert({
