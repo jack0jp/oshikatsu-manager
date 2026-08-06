@@ -20,9 +20,11 @@ create policy "profiles_select_self" on public.profiles
   for select to authenticated
   using (id = auth.uid());
 
+-- is_adminはUPDATE同様、INSERT時も本人がtrueにできないようにする
+-- (guard_is_admin_immutableと一貫性を持たせる)。
 create policy "profiles_insert_self" on public.profiles
   for insert to authenticated
-  with check (id = auth.uid());
+  with check (id = auth.uid() and is_admin = false);
 
 create policy "profiles_update_self" on public.profiles
   for update to authenticated
