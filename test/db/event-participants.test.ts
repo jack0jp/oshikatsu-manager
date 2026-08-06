@@ -35,9 +35,12 @@ test("参加登録済みユーザーは他人を招待でき、招待された�
     createTestUser(),
   ]);
   const event = await createEvent(owner);
-  await inviter.client
+  const selfRegister = await inviter.client
     .from("event_participants")
-    .insert({ event_id: event.id, user_id: inviter.userId, status: "considering" });
+    .insert({ event_id: event.id, user_id: inviter.userId, status: "considering" })
+    .select()
+    .single();
+  expect(selfRegister.error).toBeNull();
 
   const { data, error } = await inviter.client
     .from("event_participants")
