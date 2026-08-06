@@ -14,6 +14,19 @@ test("本人はexpensesを作成・閲覧できる", async () => {
   expect(data?.user_id).toBe(self.userId);
 });
 
+test("他人になりすましてexpensesを作成できない", async () => {
+  const [owner, actor, victim] = await Promise.all([
+    createTestUser(),
+    createTestUser(),
+    createTestUser(),
+  ]);
+  const event = await createEvent(owner);
+  const { error } = await actor.client
+    .from("expenses")
+    .insert({ event_id: event.id, user_id: victim.userId, category: "ticket" });
+  expect(error).not.toBeNull();
+});
+
 test("他人のexpensesは見えない", async () => {
   const [owner, self, stranger] = await Promise.all([
     createTestUser(),

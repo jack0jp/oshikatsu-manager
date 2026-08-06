@@ -17,6 +17,17 @@ test("本人はbudgetsを作成・閲覧できる", async () => {
   expect(data?.user_id).toBe(user.userId);
 });
 
+test("他人になりすましてbudgetsを作成できない", async () => {
+  const [actor, victim] = await Promise.all([createTestUser(), createTestUser()]);
+  const { error } = await actor.client.from("budgets").insert({
+    user_id: victim.userId,
+    period_type: "monthly",
+    period_start: "2026-08-01",
+    amount: 10000,
+  });
+  expect(error).not.toBeNull();
+});
+
 test("他人のbudgetsは見えない", async () => {
   const [self, stranger] = await Promise.all([createTestUser(), createTestUser()]);
   const { data: created, error: createError } = await self.client

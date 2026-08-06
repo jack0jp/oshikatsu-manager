@@ -126,9 +126,10 @@ test("参加登録していないユーザーは他人を招待できない", as
 test("本人は自分の参加行のvisibilityを変更できる", async () => {
   const [owner, self] = await Promise.all([createTestUser(), createTestUser()]);
   const event = await createEvent(owner);
-  await self.client
+  const setupResult = await self.client
     .from("event_participants")
     .insert({ event_id: event.id, user_id: self.userId, status: "considering" });
+  expect(setupResult.error).toBeNull();
 
   const { error } = await self.client
     .from("event_participants")
@@ -246,12 +247,13 @@ test("公開の参加行は他ユーザーからも見える", async () => {
     createTestUser(),
   ]);
   const event = await createEvent(owner);
-  await self.client.from("event_participants").insert({
+  const setupResult = await self.client.from("event_participants").insert({
     event_id: event.id,
     user_id: self.userId,
     status: "considering",
     visibility: "public",
   });
+  expect(setupResult.error).toBeNull();
 
   const { data, error } = await stranger.client
     .from("event_participants")

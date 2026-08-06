@@ -77,6 +77,21 @@ test("参加登録済みの他ユーザーもイベントを編集・削除で�
     .eq("id", event.id)
     .single();
   expect(unchanged?.title).toBe("test event");
+
+  const { data: deleted, error: deleteError } = await participant.client
+    .from("events")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", event.id)
+    .select();
+  expect(deleteError).toBeNull();
+  expect(deleted).toHaveLength(0);
+
+  const { data: stillNotDeleted } = await owner.client
+    .from("events")
+    .select("deleted_at")
+    .eq("id", event.id)
+    .single();
+  expect(stillNotDeleted?.deleted_at).toBeNull();
 });
 
 test("他人になりすましてイベントを登録できない", async () => {
@@ -93,12 +108,13 @@ test("他人になりすましてイベントを登録できない", async () =>
 test("参加者(公開)がいるイベントはオーナーでも削除できない", async () => {
   const [owner, participant] = await Promise.all([createTestUser(), createTestUser()]);
   const event = await createEvent(owner);
-  await participant.client.from("event_participants").insert({
+  const setupResult = await participant.client.from("event_participants").insert({
     event_id: event.id,
     user_id: participant.userId,
     status: "considering",
     visibility: "public",
   });
+  expect(setupResult.error).toBeNull();
 
   const { error } = await owner.client
     .from("events")
@@ -111,11 +127,12 @@ test("参加者(非公開)がいるイベントはオーナーでも削除でき
   const [owner, participant] = await Promise.all([createTestUser(), createTestUser()]);
   const event = await createEvent(owner);
   // visibilityを指定しないとdefaultのprivateになる
-  await participant.client.from("event_participants").insert({
+  const setupResult = await participant.client.from("event_participants").insert({
     event_id: event.id,
     user_id: participant.userId,
     status: "considering",
   });
+  expect(setupResult.error).toBeNull();
 
   const { error } = await owner.client
     .from("events")
