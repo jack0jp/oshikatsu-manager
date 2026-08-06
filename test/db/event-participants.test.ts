@@ -163,6 +163,17 @@ test("他人の参加行を更新・削除できない", async () => {
   expect(updateError).toBeNull();
   expect(updated).toHaveLength(0);
 
+  // actorはtargetの行をSELECTできないため、RETURNINGが空なだけでは
+  // USING句が本当に効いているか分からない(actor視点では行があっても無くても
+  // 同じ結果になる)。target自身の視点で実際に変化していないことを確認する。
+  const { data: afterUpdate } = await target.client
+    .from("event_participants")
+    .select("status")
+    .eq("event_id", event.id)
+    .eq("user_id", target.userId)
+    .single();
+  expect(afterUpdate?.status).toBe("considering");
+
   const { data: deleted, error: deleteError } = await actor.client
     .from("event_participants")
     .delete()
@@ -171,6 +182,13 @@ test("他人の参加行を更新・削除できない", async () => {
     .select();
   expect(deleteError).toBeNull();
   expect(deleted).toHaveLength(0);
+
+  const { data: stillExists } = await target.client
+    .from("event_participants")
+    .select()
+    .eq("event_id", event.id)
+    .eq("user_id", target.userId);
+  expect(stillExists).toHaveLength(1);
 });
 
 test("本人は自分の参加登録を取りやめられる", async () => {

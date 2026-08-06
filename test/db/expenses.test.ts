@@ -56,8 +56,20 @@ test("他人のexpensesは更新・削除できない", async () => {
     .select();
   expect(updated).toHaveLength(0);
 
+  // strangerは他人のexpensesをSELECTできないため、RETURNINGが空なだけでは
+  // USING句が効いているか分からない。本人視点で実際に変化していないことを確認する。
+  const { data: afterUpdate } = await self.client
+    .from("expenses")
+    .select("memo")
+    .eq("id", id)
+    .single();
+  expect(afterUpdate?.memo).toBeNull();
+
   const { data: deleted } = await stranger.client.from("expenses").delete().eq("id", id).select();
   expect(deleted).toHaveLength(0);
+
+  const { data: stillExists } = await self.client.from("expenses").select().eq("id", id);
+  expect(stillExists).toHaveLength(1);
 });
 
 test("本人は自分のexpensesを削除できる", async () => {

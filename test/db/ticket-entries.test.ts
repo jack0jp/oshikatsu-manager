@@ -56,12 +56,24 @@ test("他人のticket_entriesは更新・削除できない", async () => {
     .select();
   expect(updated).toHaveLength(0);
 
+  // strangerは他人のticket_entriesをSELECTできないため、RETURNINGが空なだけでは
+  // USING句が効いているか分からない。本人視点で実際に変化していないことを確認する。
+  const { data: afterUpdate } = await self.client
+    .from("ticket_entries")
+    .select("provider")
+    .eq("id", id)
+    .single();
+  expect(afterUpdate?.provider).toBeNull();
+
   const { data: deleted } = await stranger.client
     .from("ticket_entries")
     .delete()
     .eq("id", id)
     .select();
   expect(deleted).toHaveLength(0);
+
+  const { data: stillExists } = await self.client.from("ticket_entries").select().eq("id", id);
+  expect(stillExists).toHaveLength(1);
 });
 
 test("本人は自分のticket_entriesを削除できる", async () => {
