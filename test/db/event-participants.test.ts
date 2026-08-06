@@ -123,6 +123,30 @@ test("参加登録していないユーザーは他人を招待できない", as
   expect(error).not.toBeNull();
 });
 
+test("本人は自分の参加ステータスを変更できる", async () => {
+  const [owner, self] = await Promise.all([createTestUser(), createTestUser()]);
+  const event = await createEvent(owner);
+  const setupResult = await self.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: self.userId, status: "considering" });
+  expect(setupResult.error).toBeNull();
+
+  const { error } = await self.client
+    .from("event_participants")
+    .update({ status: "applied" })
+    .eq("event_id", event.id)
+    .eq("user_id", self.userId);
+  expect(error).toBeNull();
+
+  const { data } = await self.client
+    .from("event_participants")
+    .select("status")
+    .eq("event_id", event.id)
+    .eq("user_id", self.userId)
+    .single();
+  expect(data?.status).toBe("applied");
+});
+
 test("本人は自分の参加行のvisibilityを変更できる", async () => {
   const [owner, self] = await Promise.all([createTestUser(), createTestUser()]);
   const event = await createEvent(owner);
