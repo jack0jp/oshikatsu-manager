@@ -21,11 +21,12 @@ test("他人のexpensesは見えない", async () => {
     createTestUser(),
   ]);
   const event = await createEvent(owner);
-  const { data: created } = await self.client
+  const { data: created, error: createError } = await self.client
     .from("expenses")
     .insert({ event_id: event.id, user_id: self.userId, category: "ticket" })
     .select()
     .single();
+  expect(createError).toBeNull();
 
   const { data, error } = await stranger.client
     .from("expenses")
@@ -75,12 +76,17 @@ test("他人のexpensesは更新・削除できない", async () => {
 test("本人は自分のexpensesを削除できる", async () => {
   const [owner, self] = await Promise.all([createTestUser(), createTestUser()]);
   const event = await createEvent(owner);
-  const { data: created } = await self.client
+  const { data: created, error: createError } = await self.client
     .from("expenses")
     .insert({ event_id: event.id, user_id: self.userId, category: "ticket" })
     .select()
     .single();
+  expect(createError).toBeNull();
+  const id = created?.id ?? "";
 
-  const { error } = await self.client.from("expenses").delete().eq("id", created?.id ?? "");
+  const { error } = await self.client.from("expenses").delete().eq("id", id);
   expect(error).toBeNull();
+
+  const { data: gone } = await self.client.from("expenses").select().eq("id", id);
+  expect(gone).toHaveLength(0);
 });

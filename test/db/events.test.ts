@@ -112,10 +112,11 @@ test("参加者がオーナー以外にいなければ削除できる", async ()
 test("削除後もオーナー自身は引き続き閲覧できる", async () => {
   const owner = await createTestUser();
   const event = await createEvent(owner);
-  await owner.client
+  const deleteResult = await owner.client
     .from("events")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", event.id);
+  expect(deleteResult.error).toBeNull();
 
   const { data, error } = await owner.client
     .from("events")
@@ -144,15 +145,17 @@ test("削除後は無関係のユーザーから見えなくなる", async () =>
 test("削除後も自分の支出が紐づくユーザーは引き続き閲覧できる", async () => {
   const [owner, spender] = await Promise.all([createTestUser(), createTestUser()]);
   const event = await createEvent(owner);
-  await spender.client.from("expenses").insert({
+  const expenseResult = await spender.client.from("expenses").insert({
     user_id: spender.userId,
     event_id: event.id,
     category: "ticket",
   });
-  await owner.client
+  expect(expenseResult.error).toBeNull();
+  const deleteResult = await owner.client
     .from("events")
     .update({ deleted_at: new Date().toISOString() })
     .eq("id", event.id);
+  expect(deleteResult.error).toBeNull();
 
   const { data, error } = await spender.client
     .from("events")

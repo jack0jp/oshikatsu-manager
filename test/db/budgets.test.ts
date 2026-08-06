@@ -19,7 +19,7 @@ test("本人はbudgetsを作成・閲覧できる", async () => {
 
 test("他人のbudgetsは見えない", async () => {
   const [self, stranger] = await Promise.all([createTestUser(), createTestUser()]);
-  const { data: created } = await self.client
+  const { data: created, error: createError } = await self.client
     .from("budgets")
     .insert({
       user_id: self.userId,
@@ -29,6 +29,7 @@ test("他人のbudgetsは見えない", async () => {
     })
     .select()
     .single();
+  expect(createError).toBeNull();
 
   const { data, error } = await stranger.client
     .from("budgets")
@@ -77,7 +78,7 @@ test("他人のbudgetsは更新・削除できない", async () => {
 
 test("本人は自分のbudgetsを削除できる", async () => {
   const user = await createTestUser();
-  const { data: created } = await user.client
+  const { data: created, error: createError } = await user.client
     .from("budgets")
     .insert({
       user_id: user.userId,
@@ -87,9 +88,14 @@ test("本人は自分のbudgetsを削除できる", async () => {
     })
     .select()
     .single();
+  expect(createError).toBeNull();
+  const id = created?.id ?? "";
 
-  const { error } = await user.client.from("budgets").delete().eq("id", created?.id ?? "");
+  const { error } = await user.client.from("budgets").delete().eq("id", id);
   expect(error).toBeNull();
+
+  const { data: gone } = await user.client.from("budgets").select().eq("id", id);
+  expect(gone).toHaveLength(0);
 });
 
 test("同一期間の全ジャンル合算枠(genre NULL)は重複作成できない", async () => {

@@ -68,9 +68,10 @@ test("招待時にvisibilityをpublicへ上書きしようとすると失敗す�
     createTestUser(),
   ]);
   const event = await createEvent(owner);
-  await inviter.client
+  const setupResult = await inviter.client
     .from("event_participants")
     .insert({ event_id: event.id, user_id: inviter.userId, status: "considering" });
+  expect(setupResult.error).toBeNull();
 
   const { error } = await inviter.client.from("event_participants").insert({
     event_id: event.id,
@@ -89,9 +90,10 @@ test("招待時にparticipation_stateを上書きしようとすると失敗す�
     createTestUser(),
   ]);
   const event = await createEvent(owner);
-  await inviter.client
+  const setupResult = await inviter.client
     .from("event_participants")
     .insert({ event_id: event.id, user_id: inviter.userId, status: "considering" });
+  expect(setupResult.error).toBeNull();
 
   const { error } = await inviter.client.from("event_participants").insert({
     event_id: event.id,
@@ -194,9 +196,10 @@ test("他人の参加行を更新・削除できない", async () => {
 test("本人は自分の参加登録を取りやめられる", async () => {
   const [owner, self] = await Promise.all([createTestUser(), createTestUser()]);
   const event = await createEvent(owner);
-  await self.client
+  const setupResult = await self.client
     .from("event_participants")
     .insert({ event_id: event.id, user_id: self.userId, status: "considering" });
+  expect(setupResult.error).toBeNull();
 
   const { error } = await self.client
     .from("event_participants")
@@ -220,9 +223,10 @@ test("非公開の参加行は他ユーザーから見えない", async () => {
     createTestUser(),
   ]);
   const event = await createEvent(owner);
-  await self.client
+  const setupResult = await self.client
     .from("event_participants")
     .insert({ event_id: event.id, user_id: self.userId, status: "considering" });
+  expect(setupResult.error).toBeNull();
 
   const { data, error } = await stranger.client
     .from("event_participants")
