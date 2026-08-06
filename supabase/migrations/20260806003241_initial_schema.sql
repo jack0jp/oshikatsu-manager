@@ -31,6 +31,7 @@ create trigger on_auth_user_created
 create function public.set_updated_at()
 returns trigger
 language plpgsql
+set search_path = public
 as $$
 begin
   new.updated_at = now();
@@ -143,5 +144,7 @@ create table public.budgets (
   genre text check (genre is null or genre in ('takarazuka', 'kabuki', 'idol', 'other')),
   amount integer not null,
   created_at timestamptz not null default now(),
-  unique (user_id, period_type, period_start, genre)
+  -- genreがNULL(全ジャンル合算の枠)の行も重複禁止の対象にするため
+  -- NULLS NOT DISTINCTでNULLどうしも同一視する(PG15+、major_version=17で利用可)。
+  unique nulls not distinct (user_id, period_type, period_start, genre)
 );
