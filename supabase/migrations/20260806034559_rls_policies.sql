@@ -5,11 +5,14 @@
 -- profiles.is_admin を参照する条件は一切書かない(MVPスコープ外。docs/permissions.md参照)。
 
 -- 1. profiles (docs/data-model.md「RLSポリシー方針」)
+-- SELECTの「全ユーザー(公開カラムは限定)」はRLS(行単位)だけでは表現できないため、
+-- テーブル本体は本人のみに限定し、他ユーザーへの公開はpublic_profilesビュー(id/display_nameのみ)
+-- 経由に限定する。
 alter table public.profiles enable row level security;
 
-create policy "profiles_select_all" on public.profiles
+create policy "profiles_select_self" on public.profiles
   for select to authenticated
-  using (true);
+  using (id = auth.uid());
 
 create policy "profiles_insert_self" on public.profiles
   for insert to authenticated
@@ -20,12 +23,56 @@ create policy "profiles_update_self" on public.profiles
   using (id = auth.uid())
   with check (id = auth.uid());
 
+-- is_adminは本人のUPDATEでも書き換えられないようにする。参照して分岐を作ってはいないが
+-- (docs/permissions.mdの禁止範囲)、書き換え自体を放置すると、フェーズ2で管理者判定を
+-- 実装した瞬間に「今のうちに自分でis_admin=trueにしておいたユーザー」がそのまま
+-- 管理者権限を得てしまう。service_role(将来の管理者操作用)はauth.role()で除外する。
+create function public.guard_is_admin_immutable()
+returns trigger
+language plpgsql
+set search_path = public
+as $$
+begin
+  if new.is_admin is distinct from old.is_admin and auth.role() <> 'service_role' then
+    raise exception 'is_admin cannot be changed by the profile owner';
+  end if;
+  return new;
+end;
+$$;
+
+create trigger guard_is_admin_immutable_trigger
+  before update on public.profiles
+  for each row execute function public.guard_is_admin_immutable();
+
+-- 他ユーザーに公開してよい列(id, display_name)のみを持つビュー。
+-- 所有者(postgres)としてprofilesを参照するため、上記の自分のみSELECT可のRLSに関わらず
+-- 全行を返す(profilesテーブル自体への直接アクセスは自分の行のみに制限したまま)。
+create view public.profiles_public
+  with (security_invoker = false)
+  as
+  select id, display_name
+  from public.profiles;
+
+grant select on public.profiles_public to authenticated;
+
 -- 2. events (docs/data-model.md「RLSポリシー方針」、削除ガードはdocs/data-model.md 2章)
 alter table public.events enable row level security;
 
-create policy "events_select_not_deleted" on public.events
+-- 未削除の全イベントに加えて、削除後もオーナー自身と、その支出(expenses)を持つ
+-- ユーザーは引き続き参照できるようにする(docs/data-model.md 5章「eventsは論理削除なので、
+-- 支出から辿ってイベント名などは常に参照できる」)。
+create policy "events_select_not_deleted_or_referenced" on public.events
   for select to authenticated
-  using (deleted_at is null);
+  using (
+    deleted_at is null
+    or owner_id = auth.uid()
+    or exists (
+      select 1
+      from public.expenses e
+      where e.event_id = events.id
+        and e.user_id = auth.uid()
+    )
+  );
 
 create policy "events_insert_as_owner" on public.events
   for insert to authenticated
@@ -38,10 +85,13 @@ create policy "events_update_owner_only" on public.events
 
 -- イベント削除(論理削除)のガード。オーナー本人以外の参加者が1人でもいる場合、
 -- deleted_at をNULLから設定する更新を拒否する。MVPでは例外を設けない(管理者もバイパス不可)。
+-- security definerが無いと、内部のEXISTS検査が呼び出し元(削除しようとしているオーナー)の
+-- RLS越しに実行され、private参加者の行が見えず「参加者なし」と誤判定してガードが
+-- すり抜けてしまう(handle_new_user()と同じ理由でsecurity definerが必要)。
 create function public.guard_event_deletion()
 returns trigger
 language plpgsql
-set search_path = public
+security definer set search_path = public
 as $$
 begin
   if new.deleted_at is not null and old.deleted_at is null then
@@ -71,12 +121,17 @@ create policy "event_participants_select_own_or_public" on public.event_particip
 
 -- 自分で登録する経路(invited_byなし) と、参加登録済みユーザーによる招待経路
 -- (invited_by=自分。招待できるのは参加登録している任意のユーザー)の2通りのみ許可する。
+-- 招待経路で作成する他人の行は、招待者が公開設定を勝手に指定できないよう
+-- visibility='private'(既定値どおり)、participation_state='joined'
+-- (docs/data-model.md 3章「MVPでの挙動」)に固定する。
 create policy "event_participants_insert_self_or_invite" on public.event_participants
   for insert to authenticated
   with check (
     (user_id = auth.uid() and invited_by is null)
     or (
       invited_by = auth.uid()
+      and visibility = 'private'
+      and participation_state = 'joined'
       and exists (
         select 1
         from public.event_participants ep
