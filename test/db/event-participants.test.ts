@@ -42,6 +42,15 @@ test("参加登録済みユーザーは他人を招待でき、招待された�
     .single();
   expect(selfRegister.error).toBeNull();
 
+  // 診断: EXISTS相当のクエリを同じセッションから直接叩き、可視かどうかを確認する
+  const visibilityCheck = await inviter.client
+    .from("event_participants")
+    .select()
+    .eq("event_id", event.id)
+    .eq("user_id", inviter.userId);
+  expect(visibilityCheck.error).toBeNull();
+  expect(visibilityCheck.data).toHaveLength(1);
+
   const { data, error } = await inviter.client
     .from("event_participants")
     .insert({
