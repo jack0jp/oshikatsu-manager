@@ -87,6 +87,14 @@ jobs:
       - run: yarn gen:types
         if: steps.check.outputs.initialized == 'true'
 
+      # ローカル開発機にDockerが無く `yarn gen:types --local` を手元で実行できない
+      # 場合でも、生成結果をここから取得してコミットできるようにする。
+      - uses: actions/upload-artifact@v4
+        if: steps.check.outputs.initialized == 'true'
+        with:
+          name: supabase-types
+          path: supabase/types.ts
+
       - name: supabase/types.ts に差分がないことを確認
         if: steps.check.outputs.initialized == 'true'
         # git diff だけだと未追跡ファイル(コミットし忘れ)を検出できないため、
