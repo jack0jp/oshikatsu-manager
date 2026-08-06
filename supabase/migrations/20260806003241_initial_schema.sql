@@ -104,7 +104,7 @@ create table public.ticket_entries (
   entry_closes_at timestamptz,
   result_announced_at timestamptz,
   sale_starts_at timestamptz,
-  result text check (result is null or result in ('pending', 'won', 'lost', 'not_applied')),
+  result text check (result in ('pending', 'won', 'lost', 'not_applied')),
   memo text,
   created_at timestamptz not null default now()
 );
@@ -141,7 +141,7 @@ create table public.budgets (
   user_id uuid not null references public.profiles (id),
   period_type text not null check (period_type in ('monthly', 'yearly')),
   period_start date not null,
-  genre text check (genre is null or genre in ('takarazuka', 'kabuki', 'idol', 'other')),
+  genre text check (genre in ('takarazuka', 'kabuki', 'idol', 'other')),
   amount integer not null,
   created_at timestamptz not null default now(),
   -- genreがNULL(全ジャンル合算の枠)の行も重複禁止の対象にするため
