@@ -43,11 +43,12 @@ test("他人のexpensesは更新・削除できない", async () => {
     createTestUser(),
   ]);
   const event = await createEvent(owner);
-  const { data: created } = await self.client
+  const { data: created, error: createError } = await self.client
     .from("expenses")
     .insert({ event_id: event.id, user_id: self.userId, category: "ticket" })
     .select()
     .single();
+  expect(createError).toBeNull();
   const id = created?.id ?? "";
 
   const { data: updated } = await stranger.client

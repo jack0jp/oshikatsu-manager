@@ -41,7 +41,7 @@ test("他人のbudgetsは見えない", async () => {
 
 test("他人のbudgetsは更新・削除できない", async () => {
   const [self, stranger] = await Promise.all([createTestUser(), createTestUser()]);
-  const { data: created } = await self.client
+  const { data: created, error: createError } = await self.client
     .from("budgets")
     .insert({
       user_id: self.userId,
@@ -51,6 +51,7 @@ test("他人のbudgetsは更新・削除できない", async () => {
     })
     .select()
     .single();
+  expect(createError).toBeNull();
   const id = created?.id ?? "";
 
   const { data: updated } = await stranger.client

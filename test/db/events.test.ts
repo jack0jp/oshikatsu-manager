@@ -53,6 +53,32 @@ test("オーナー以外がイベントを削除しようとして失敗する",
   expect(unchanged?.deleted_at).toBeNull();
 });
 
+test("参加登録済みの他ユーザーもイベントを編集・削除できない", async () => {
+  const [owner, participant] = await Promise.all([createTestUser(), createTestUser()]);
+  const event = await createEvent(owner);
+  const setupResult = await participant.client.from("event_participants").insert({
+    event_id: event.id,
+    user_id: participant.userId,
+    status: "considering",
+  });
+  expect(setupResult.error).toBeNull();
+
+  const { data: updated, error: updateError } = await participant.client
+    .from("events")
+    .update({ title: "hijacked" })
+    .eq("id", event.id)
+    .select();
+  expect(updateError).toBeNull();
+  expect(updated).toHaveLength(0);
+
+  const { data: unchanged } = await owner.client
+    .from("events")
+    .select("title")
+    .eq("id", event.id)
+    .single();
+  expect(unchanged?.title).toBe("test event");
+});
+
 test("他人になりすましてイベントを登録できない", async () => {
   const [userA, userB] = await Promise.all([createTestUser(), createTestUser()]);
   const { error } = await userA.client.from("events").insert({

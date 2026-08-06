@@ -153,9 +153,10 @@ test("他人の参加行を更新・削除できない", async () => {
     createTestUser(),
   ]);
   const event = await createEvent(owner);
-  await target.client
+  const setupResult = await target.client
     .from("event_participants")
     .insert({ event_id: event.id, user_id: target.userId, status: "considering" });
+  expect(setupResult.error).toBeNull();
 
   const { data: updated, error: updateError } = await actor.client
     .from("event_participants")
