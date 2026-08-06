@@ -49,9 +49,17 @@
 **mainへの直接pushは禁止。**必ずブランチを作成し、PRを経由してmainにマージする。
 mainはRulesetで保護されており、リポジトリ管理者(あなた)のみ緊急時にバイパスできる。
 
-- PRを作成すると、Claude(`claude-review.yml`)とCodex(`codex-review.yml`)による
-  自動レビューが走る。シークレット未設定の間は自動でスキップされる
-  (`docs/roadmap.md`「保留: 外部アカウント待ち」)
+**PRはまずDraftで作成する。**
+Claude(`claude-review.yml`)とCodex(`codex-review.yml`)はdraftでもpushのたびに走るが、
+GitHub Copilotの自動レビュー(`copilot_code_review` Ruleset)は`review_draft_pull_requests: false`
+に設定済みのためdraft中は走らない。Draftで指摘がなくなるまで反復し、`gh pr ready`で
+Ready for reviewに変えたタイミングでCopilot(導入後はCodeRabbitも)の最終レビューを1回受ける。
+Copilotは1レビューあたりプレミアムリクエストを消費するため、Claude/Codexとの反復で
+消費しないようにするための運用(PR #18〜#32の実績分析に基づく判断)。
+
+- Ready化後にCopilot/CodeRabbitの指摘で追加修正が発生した場合は、都度pushしてよい
+  (Ready後はpushのたびに再レビューが走る)
+- シークレット未設定の間、Codexは自動でスキップされる(`docs/roadmap.md`「保留: 外部アカウント待ち」)
 - 人間の承認レビューは必須にしていない(現状は開発者本人のみのため。GitHubは
   PR作成者自身の承認をカウントしない)。マージの実行自体が「人間の確認」に当たる
   (`docs/prd.md` 8.5)

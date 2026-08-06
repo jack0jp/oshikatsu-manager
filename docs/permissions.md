@@ -83,6 +83,27 @@ expect(await asUserA.from("expenses").select()).toHaveLength(3);
 expect(await asUserB.from("expenses").select()).toHaveLength(0);
 ```
 
+**UPDATE/DELETEの`RETURNING`が空であることだけで判定しない。**
+`UPDATE ... RETURNING` / `DELETE ... RETURNING` は、対象行がUSING句で弾かれた場合だけでなく、
+USING句が壊れていて実際には書き換え・削除できてしまっている場合でも、その行をSELECTポリシー上
+見せられなければ同じく空配列を返す。RETURNINGが空であることは「USING句が効いている」ことを
+何も証明しない。
+
+```
+// これだけでは何も検証していない(USING句が壊れていても同じ結果になりうる)
+const { data } = await asUserB.from("expenses").update({ amount: 1 }).eq("id", id).select();
+expect(data).toHaveLength(0);
+
+// これが本体。本人(対象行を見られる側)の視点で値が実際に変化していないことを確認する
+const { data: unchanged } = await asUserA.from("expenses").select("amount").eq("id", id).single();
+expect(unchanged?.amount).toBe(元の値);
+```
+
+**INSERTの`RETURNING`にも同じ注意が必要。** 招待のように自分以外のユーザーの行を作成する
+操作では、作成した本人(自分)がその行をSELECTポリシー上見られないことがある。この場合
+`INSERT ... RETURNING` はINSERT自体が要件を満たしていてもRLS違反エラーを返す。
+`.select()` を付けずにINSERTするか、作成された行の中身は対象ユーザー自身の視点で確認すること。
+
 ### 3. マトリクスを表のままテストに写す
 
 上の表の×が1つでもテストされていなければ、それは検証されていない権限とみなす。

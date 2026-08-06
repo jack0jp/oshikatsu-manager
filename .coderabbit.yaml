@@ -1,0 +1,32 @@
+language: "ja-JP"
+
+reviews:
+  profile: assertive
+  auto_review:
+    enabled: true
+    # デフォルトはdraft PRをスキップするが、このリポジトリはDraftで
+    # Claude/Codexと反復してからReady化する運用(CLAUDE.md「ブランチとPR」)。
+    # CodeRabbitは無料枠のためCopilotと違いdraft中も含めて都度レビューさせる。
+    drafts: true
+  path_instructions:
+    - path: "**/*.{ts,tsx}"
+      instructions: |
+        CLAUDE.md の絶対ルールに違反していないか重点的に確認すること。
+        - `as` によるキャスト、`any`、`@ts-ignore` / `@ts-expect-error` / `eslint-disable` による
+          エラーの黙殺がないか
+        - common/ に置くべき判断ロジック(フィルタ・並び順・検証・集計・権限判定・日付計算)が
+          app/ や mcp/ に複製・直書きされていないか
+        - 型を手書きせず、生成型(supabase/types.ts)かZodスキーマの z.infer から導出しているか
+    - path: "supabase/migrations/**"
+      instructions: |
+        docs/data-model.md・docs/permissions.md の権限マトリクスと突き合わせて確認すること。
+        RLSポリシー内の自己参照サブクエリ(同一テーブルを問い合わせるEXISTS等)は
+        呼び出し元のRLS越しに評価され、本来見えるべき行が見えず誤判定することがある
+        (security definer関数でラップする必要がないか確認する)。
+    - path: "test/db/**"
+      instructions: |
+        docs/testing.md・docs/permissions.md「RLS検証の必須要件」に沿っているか確認すること。
+        - service_roleキーを使っていないか
+        - 否定側のテストが、UPDATE/DELETEのRETURNINGやSELECTが空であることだけで
+          「弾かれた」と誤認していないか(USING句が壊れていても同じ結果になりうる)。
+          対象行を見られる側の視点で値が実際に変化していないことまで確認しているか
