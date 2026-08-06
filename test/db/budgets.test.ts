@@ -112,15 +112,19 @@ test("本人は自分のbudgetsを削除できる", async () => {
 
 test("同一期間の全ジャンル合算枠(genre NULL)は重複作成できない", async () => {
   const user = await createTestUser();
-  const payload = {
+  const first = await user.client.from("budgets").insert({
     user_id: user.userId,
-    period_type: "monthly" as const,
+    period_type: "monthly",
     period_start: "2026-09-01",
     amount: 10000,
-  };
-  const first = await user.client.from("budgets").insert(payload);
+  });
   expect(first.error).toBeNull();
 
-  const second = await user.client.from("budgets").insert(payload);
+  const second = await user.client.from("budgets").insert({
+    user_id: user.userId,
+    period_type: "monthly",
+    period_start: "2026-09-01",
+    amount: 10000,
+  });
   expect(second.error).not.toBeNull();
 });
