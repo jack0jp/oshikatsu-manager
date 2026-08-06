@@ -36,10 +36,14 @@ PR作成時にClaude/Codexによる自動レビューが走る(有効化の手�
 
 ## セットアップ
 
+Supabase CLIは `.github/workflows/supabase.yml` の `SUPABASE_CLI_VERSION` と同じバージョンを使うこと。
+バージョンがずれると、マイグレーション由来ではなく「CLI差」でローカルとCIの挙動が食い違い、
+どちらの結果も信用できなくなる(`docs/roadmap.md` フェーズ1の注意点)。
+
 ```
 yarn install
 cp .env.example .env.local   # Supabaseの接続情報を設定
-supabase start               # ローカルDB
+npx supabase@2.111.0 start   # ローカルDB(Dockerが必要。バージョンは.github/workflows/supabase.ymlのSUPABASE_CLI_VERSIONと同じ値にすること)
 yarn dev
 ```
 
