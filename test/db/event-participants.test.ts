@@ -35,9 +35,10 @@ test("参加登録済みユーザーは他人を招待でき、招待された�
     createTestUser(),
   ]);
   const event = await createEvent(owner);
-  await inviter.client
+  const setupResult = await inviter.client
     .from("event_participants")
     .insert({ event_id: event.id, user_id: inviter.userId, status: "considering" });
+  expect(setupResult.error).toBeNull();
 
   // 招待INSERT自体はRETURNINGしない。招待者(inviter)はinvitee宛ての非公開行を
   // SELECTポリシー上読めない(user_id=invitee, visibility=private)ため、
