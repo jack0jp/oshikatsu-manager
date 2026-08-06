@@ -59,6 +59,15 @@ auth.users (Supabase管理)
 > `is_admin` は**カラムのみMVPで用意し、これを参照する権限判定は一切実装しない**。
 > 管理者画面と強制削除はフェーズ2(`docs/roadmap.md`「フェーズ2バックログ」)。
 > (後からのカラム追加はマイグレーションが必要なため、先に定義だけしておく)
+>
+> ただし列自体は、本人のUPDATEでも書き換えられないようにトリガーで保護する
+> (`guard_is_admin_immutable`。service_roleは対象外)。これは「is_adminを参照して
+> 権限判定を分岐させない」こととは別の話で、フェーズ2で管理者判定を実装する前に
+> 自分で`is_admin=true`にしておく、という抜け道を塞ぐための列保護。
+
+**profiles他ユーザーへの公開**: SELECTは本人の行のみ(全カラム)。他ユーザーには
+`id` / `display_name` のみを公開する `profiles_public` ビュー経由でアクセスさせる
+(RLSは行単位の制御しかできないため、列を絞る目的でビューを用いる)。
 
 ---
 
@@ -233,13 +242,20 @@ auth.users (Supabase管理)
 
 | テーブル | SELECT | INSERT | UPDATE / DELETE |
 |---|---|---|---|
-| profiles | 全ユーザー(公開カラムは限定) | 本人のみ | 本人のみ |
-| events | 全ユーザー(`deleted_at IS NULL`) | ログインユーザー | `owner_id` = 本人のみ(削除は上記ガード条件つき) |
-| event_participants | 本人の行 + 他ユーザーの `visibility = 'public'` の行 | 本人の行 + 招待による他ユーザーの行 | 本人の行のみ |
+| profiles | 本人の行のみ(全カラム)。他ユーザーへは `profiles_public` ビュー(`id`/`display_name`のみ) | 本人のみ | 本人のみ(`is_admin`は列単位で保護。上記1章参照) |
+| events | 全ユーザー(`deleted_at IS NULL`) ※1 | ログインユーザー(`owner_id`=本人で作成) | `owner_id` = 本人のみ(削除は上記ガード条件つき) |
+| event_participants | 本人の行 + 他ユーザーの `visibility = 'public'` の行 | 本人の行 + 招待による他ユーザーの行 ※2 | 本人の行のみ |
 | ticket_entries | 本人のみ | 本人のみ | 本人のみ |
 | expenses | 本人のみ | 本人のみ | 本人のみ |
 | budgets | 本人のみ | 本人のみ | 本人のみ |
 
+> ※1 削除後(`deleted_at IS NOT NULL`)でも、オーナー自身と、そのイベントを参照する
+> `expenses` を持つユーザーには引き続き見える(5章「支出から辿ってイベント名などは
+> 常に参照できる」を実現するため)。
+>
+> ※2 招待経路(`invited_by`が自分)で作成する他ユーザーの行は、`visibility='private'`・
+> `participation_state='joined'` に固定する(招待者が相手の公開設定を勝手に決められないように)。
+>
 > RLSは「保険」として設定し、権限チェックはアプリ層にも実装する
 > (将来的なピボット余地を残すため)
 >
