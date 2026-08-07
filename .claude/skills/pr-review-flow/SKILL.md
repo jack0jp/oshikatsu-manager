@@ -30,9 +30,14 @@ Draftで指摘がなくなるまで反復する。
 ## Ready後の運用
 
 Ready化後の追加修正は、ローカルで全部直してからまとめて1回でpushする。
-`copilot_code_review` Rulesetは`review_on_push: false`に設定してあるため、
+`copilot_code_review` Rulesetの`review_on_push`を`false`にしておけば、
 Ready後のpushではCopilotの自動レビューは走らない(CIとClaudeレビュー、CodeRabbitは
 上記のとおり通常どおり走るので、機械的なバックストップは失われない)。
+**この設定は2026-08-07時点でリポジトリに未適用。**`gh api`でのRuleset書き込みは
+Claude Codeのauto mode分類器にブロックされるため、人間が手動で適用する必要がある
+(適用状況は`gh api repos/{owner}/{repo}/rulesets`で`review_on_push`の値を確認できる)。
+未適用のままだとReady後のpushのたびにCopilotの自動レビューが走り、
+プレミアムリクエストを消費し続ける点に注意。
 
 Copilotの再レビューが必要なのは次の2つの場合だけで、マージ直前に手動で1回だけ行う。
 
@@ -42,7 +47,7 @@ Copilotの再レビューが必要なのは次の2つの場合だけで、マー
 再リクエストは以下のコマンドで行う。1PRにつき手動再リクエストは1回まで。
 2回目が必要だと感じたらDraftに戻し(`gh pr ready --undo`)、Claude/Codex/CodeRabbitで反復し直す。
 
-```
+```bash
 gh api repos/{owner}/{repo}/pulls/{number}/requested_reviewers -X POST \
   -f 'reviewers[]=copilot-pull-request-reviewer[bot]'
 ```
