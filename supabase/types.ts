@@ -1,3 +1,4 @@
+// issue #27: types-check CIジョブが実際に差分を検出するかを確認するための、意図的な改変。
 export type Json =
   | string
   | number
