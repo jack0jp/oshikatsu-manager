@@ -79,7 +79,7 @@ mainはRulesetで保護されており、リポジトリ管理者(あなた)の�
 - Issueには `phase:N` ラベルを付け、`docs/roadmap.md` のフェーズと対応させる。
   フェーズ2バックログは `phase:2-backlog`。
 - Projectの `Status` は Todo / In Progress / Blocked / Done。着手時にIn Progressへ、
-  他Issueの完了待ちなどで進められない場合はBlockedへ移す。
+  他Issueの完了待ちやエスカレーション上限到達など進められない場合はBlockedへ移す。
 
 ## コマンド
 
