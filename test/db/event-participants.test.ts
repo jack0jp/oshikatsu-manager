@@ -123,15 +123,25 @@ test("オーナーでも参加者でもないユーザーは他人を招待で�
     status: "considering",
   });
   expect(error).not.toBeNull();
+
+  // 拒否されたINSERTで行が作られていないことを、対象行を見られる本人(invitee)視点で確認する。
+  const { data: inviteeRows, error: inviteeRowsError } = await invitee.client
+    .from("event_participants")
+    .select()
+    .eq("event_id", event.id)
+    .eq("user_id", invitee.userId);
+  expect(inviteeRowsError).toBeNull();
+  expect(inviteeRows).toHaveLength(0);
 });
 
-// issue #34 の決定。owner_id は「情報の管理者」であって参加者ではない
-// (docs/data-model.md 2章)ため、オーナーは自分の参加行が無くても招待できる。
-test("参加登録していないオーナーは他人を招待できる", async () => {
+// issue #34 の決定そのもの。owner_id は「情報の管理者」であってイベントの主催・招待の
+// 権限を意味しない(docs/data-model.md 2章)ため、オーナーであっても自分自身が
+// 参加登録していなければ招待できない。
+test("参加登録していないオーナーは他人を招待できない", async () => {
   const [owner, invitee] = await Promise.all([createTestUser(), createTestUser()]);
   const event = await createEvent(owner);
 
-  // オーナー自身は参加登録しない(ここで登録してしまうと、この決定を検証できない)。
+  // オーナー自身は参加登録しない(この決定の検証対象そのもの)。
   const { data: ownerRows, error: ownerRowsError } = await owner.client
     .from("event_participants")
     .select()
@@ -140,60 +150,22 @@ test("参加登録していないオーナーは他人を招待できる", async
   expect(ownerRowsError).toBeNull();
   expect(ownerRows).toHaveLength(0);
 
-  // 招待INSERTはRETURNINGしない(招待者はinvitee宛ての非公開行をSELECTできないため)。
   const { error } = await owner.client.from("event_participants").insert({
     event_id: event.id,
     user_id: invitee.userId,
     invited_by: owner.userId,
     status: "considering",
   });
-  expect(error).toBeNull();
+  expect(error).not.toBeNull();
 
-  // 作成された行の中身は、招待された本人(invitee)の視点で確認する。
-  const { data } = await invitee.client
+  // 拒否されたINSERTで行が作られていないことを、対象行を見られる本人(invitee)視点で確認する。
+  const { data: inviteeRows, error: inviteeRowsError } = await invitee.client
     .from("event_participants")
     .select()
     .eq("event_id", event.id)
-    .eq("user_id", invitee.userId)
-    .single();
-  expect(data?.invited_by).toBe(owner.userId);
-  expect(data?.visibility).toBe("private");
-  expect(data?.participation_state).toBe("joined");
-});
-
-// オーナー経路は「そのイベントのオーナーであること」が条件。別のイベントのオーナーで
-// あることは、このイベントへの招待権限にならない(event_idの相関条件が効いているか)。
-test("別イベントのオーナーは、参加登録していないイベントへ他人を招待できない", async () => {
-  const [ownerOfOther, targetOwner, invitee] = await Promise.all([
-    createTestUser(),
-    createTestUser(),
-    createTestUser(),
-  ]);
-  await createEvent(ownerOfOther, { title: "自分がオーナーの別イベント" });
-  const targetEvent = await createEvent(targetOwner);
-
-  const { error } = await ownerOfOther.client.from("event_participants").insert({
-    event_id: targetEvent.id,
-    user_id: invitee.userId,
-    invited_by: ownerOfOther.userId,
-    status: "considering",
-  });
-  expect(error).not.toBeNull();
-});
-
-// オーナー経路でも、招待で作る行の固定条件(private / joined)は緩まない。
-test("参加登録していないオーナーでも、招待時にvisibilityをpublicにはできない", async () => {
-  const [owner, invitee] = await Promise.all([createTestUser(), createTestUser()]);
-  const event = await createEvent(owner);
-
-  const { error } = await owner.client.from("event_participants").insert({
-    event_id: event.id,
-    user_id: invitee.userId,
-    invited_by: owner.userId,
-    status: "considering",
-    visibility: "public",
-  });
-  expect(error).not.toBeNull();
+    .eq("user_id", invitee.userId);
+  expect(inviteeRowsError).toBeNull();
+  expect(inviteeRows).toHaveLength(0);
 });
 
 test("本人は自分の参加ステータスを変更できる", async () => {
