@@ -66,6 +66,11 @@ Draftで指摘がなくなるまで反復し、`gh pr ready`でReady for review�
   (`docs/roadmap.md`「保留: 外部アカウント待ち」参照)。反復の主力はClaude/Codexで、
   CodeRabbitは取れたときに追加の視点が入る、という位置づけで期待値を持つこと
   (PR #35で実際にレート制限を確認済み。詳細は`docs/roadmap.md`「CodeRabbitの導入」参照)
+- Copilotの最終レビューは「プレミアムリクエストのquota上限に達したため実行できなかった」
+  という形で失敗することがある(PR #35で発生)。この場合レビューコメントは投稿されるが
+  中身のないもので、コードは実際にはレビューされていない。quotaを追加してから
+  `gh api repos/{owner}/{repo}/pulls/{number}/requested_reviewers -X POST
+  -f 'reviewers[]=copilot-pull-request-reviewer[bot]'` で再リクエストする
 - Ready化後にCopilot/CodeRabbitの指摘で追加修正が発生した場合は、都度pushしてよい
   (Ready後はpushのたびに再レビューが走る。ただしCodeRabbitは上記レート制限の対象)
 - シークレット未設定の間、Codexは自動でスキップされる(`docs/roadmap.md`「保留: 外部アカウント待ち」)
