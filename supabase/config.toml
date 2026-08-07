@@ -206,7 +206,11 @@ anonymous_users = 30
 # Number of sessions that can be refreshed in a 5 minute interval per IP address.
 token_refresh = 150
 # Number of sign up and sign-in requests that can be made in a 5 minute interval per IP address (excludes anonymous users).
-sign_in_sign_ups = 30
+# issue #33: test/db/ の各テストが createTestUser() で auth.signUp を呼ぶため、テストスイート全体で
+# 既定値(30)を大きく超える(2026-08-08時点で70件超、テストが増えるほど増加する)。このファイルは
+# `supabase start` で立ち上がるローカル/CI専用のコンテナにのみ適用され、本番のSupabaseプロジェクトの
+# 設定(ダッシュボード側)には影響しないため、テスト用途に十分な値まで引き上げる。
+sign_in_sign_ups = 1000
 # Number of OTP / Magic link verifications that can be made in a 5 minute interval per IP address.
 token_verifications = 30
 # Number of Web3 logins that can be made in a 5 minute interval per IP address.
