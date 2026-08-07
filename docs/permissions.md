@@ -77,12 +77,14 @@ service_roleはRLSをバイパスする。これで通ったテストは、**RLS
 
 ```typescript
 // これだけでは何も検証していない
-const { data: dataA } = await asUserA.from("expenses").select();
-expect(dataA ?? []).toHaveLength(3);
+const { data: dataA, error: errorA } = await asUserA.from("expenses").select();
+expect(errorA).toBeNull();
+expect(dataA).toHaveLength(3);
 
 // これが本体
-const { data: dataB } = await asUserB.from("expenses").select();
-expect(dataB ?? []).toHaveLength(0);
+const { data: dataB, error: errorB } = await asUserB.from("expenses").select();
+expect(errorB).toBeNull();
+expect(dataB).toHaveLength(0);
 ```
 
 **UPDATE/DELETEが「成功したかに見える」結果だけで判定しない。**
@@ -108,8 +110,9 @@ UPDATE/DELETEを試みた後は、対象行を見られる側(本人など)の�
 const { data: before } = await asUserA.from("expenses").select("amount").eq("id", id).single();
 
 // これだけでは何も検証していない(WHERE不一致で0件なのか、正しく弾かれて0件なのか区別できない)
-const { data } = await asUserB.from("expenses").update({ amount: 1 }).eq("id", id).select();
-expect(data ?? []).toHaveLength(0);
+const { data, error } = await asUserB.from("expenses").update({ amount: 1 }).eq("id", id).select();
+expect(error).toBeNull();
+expect(data).toHaveLength(0);
 
 // これが本体。本人(対象行を見られる側)の視点で値が実際に変化していないことを確認する
 const { data: unchanged } = await asUserA.from("expenses").select("amount").eq("id", id).single();
