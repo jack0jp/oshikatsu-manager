@@ -78,11 +78,11 @@ service_roleはRLSをバイパスする。これで通ったテストは、**RLS
 ```typescript
 // これだけでは何も検証していない
 const { data: dataA } = await asUserA.from("expenses").select();
-expect(dataA).toHaveLength(3);
+expect(dataA ?? []).toHaveLength(3);
 
 // これが本体
 const { data: dataB } = await asUserB.from("expenses").select();
-expect(dataB).toHaveLength(0);
+expect(dataB ?? []).toHaveLength(0);
 ```
 
 **UPDATE/DELETEが「成功したかに見える」結果だけで判定しない。**
@@ -92,11 +92,11 @@ USING句を満たさない行は**エラーなく静かに除外される**(候�
 `using (user_id = auth.uid())`)はこのケースに該当し、`data`は空配列、`error`は`null`になる。
 
 `UPDATE ... RETURNING`にはこれとは別の落とし穴もある。USING句を通過して実際に
-更新された新しい行の内容がテーブルのSELECTポリシーを満たさない場合、更新自体が
-エラー(`new row violates row-level security policy`)になる。これはUSING句で
-静かに弾かれるケースとは別の仕組みで、UPDATEとSELECTのポリシー条件が食い違っている
-場合にだけ起こる。単に「他人の行を更新しようとする」だけの否定側テストでは通常
-発生しない。
+更新された新しい行の内容がテーブルのSELECTポリシーを満たさない場合、PostgreSQL公式
+ドキュメント([CREATE POLICY](https://www.postgresql.org/docs/current/sql-createpolicy.html))
+の通り更新自体がエラーになる("inserted or updated rows to be returned are never
+silently ignored")。単に「他人の行を更新しようとする」だけの否定側テストは、通常
+USING句の時点で候補から除外されるため、このエラーには到達しない。
 
 つまり「RETURNINGが空で、エラーも出ない」という結果だけでは、(a) `WHERE`条件に一致する行が
 最初から無かったのか、(b) USING句によって正しく弾かれたのか、を区別できない。
@@ -104,13 +104,16 @@ UPDATE/DELETEを試みた後は、対象行を見られる側(本人など)の�
 変化していないこと・行が存在し続けていることまで確認する。
 
 ```typescript
+// 更新前に本人視点で元の値を控えておく
+const { data: before } = await asUserA.from("expenses").select("amount").eq("id", id).single();
+
 // これだけでは何も検証していない(WHERE不一致で0件なのか、正しく弾かれて0件なのか区別できない)
 const { data } = await asUserB.from("expenses").update({ amount: 1 }).eq("id", id).select();
-expect(data).toHaveLength(0);
+expect(data ?? []).toHaveLength(0);
 
 // これが本体。本人(対象行を見られる側)の視点で値が実際に変化していないことを確認する
 const { data: unchanged } = await asUserA.from("expenses").select("amount").eq("id", id).single();
-expect(unchanged?.amount).toBe(元の値);
+expect(unchanged?.amount).toBe(before?.amount);
 ```
 
 **INSERTの`RETURNING`にも同じ注意が必要。** 招待のように自分以外のユーザーの行を作成する

@@ -13,9 +13,13 @@ reviews:
     drafts: true
     # 既定値5だと5コミット分レビューした時点で自動レビューが止まり、以降は
     # `@coderabbitai review` の手動実行が必要になる。pushのたびに反復する
-    # 運用と相性が悪いため無効化する(実際の頻度はFreeプランのレート制限が握る)。
-    # 0が「無制限」として機能するかはCodeRabbit公式ドキュメント通りの想定であり、
-    # 5コミットを超えて継続することの実地確認はまだ済んでいない。
+    # 運用と相性が悪いため無効化する。PR #35で7コミット分pushした後に
+    # `@coderabbitai review` を手動実行したところ、応答は「Review rate limited」
+    # であり、「レビューがpauseされているので手動実行が必要」という案内には
+    # ならなかった(pause中ならその旨のメッセージが返る仕様)。つまりauto_pauseの
+    # 5コミット上限には引っかかっていない = 0が意図通り無効化として機能している
+    # と判断できる。実際にpushのたびのレビューが止まった原因はレート制限であり、
+    # auto_pauseとは別物(詳細はdocs/roadmap.md「CodeRabbitの導入」参照)。
     auto_pause_after_reviewed_commits: 0
   path_instructions:
     - path: "**/*.{ts,tsx}"

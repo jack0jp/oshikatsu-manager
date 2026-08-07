@@ -65,8 +65,7 @@ Draftで指摘がなくなるまで反復し、`gh pr ready`でReady for review�
   Draftで短時間に何度もpushしても2回目以降はレート制限でスキップされうる
   (`docs/roadmap.md`「保留: 外部アカウント待ち」参照)。反復の主力はClaude/Codexで、
   CodeRabbitは取れたときに追加の視点が入る、という位置づけで期待値を持つこと
-  (ただしGitHub App導入直後は`Plan: Pro Plus`のトライアル期間中でこのレート制限が
-  適用されていない可能性がある。詳細は`docs/roadmap.md`「CodeRabbitの導入」参照)
+  (PR #35で実際にレート制限を確認済み。詳細は`docs/roadmap.md`「CodeRabbitの導入」参照)
 - Ready化後にCopilot/CodeRabbitの指摘で追加修正が発生した場合は、都度pushしてよい
   (Ready後はpushのたびに再レビューが走る。ただしCodeRabbitは上記レート制限の対象)
 - シークレット未設定の間、Codexは自動でスキップされる(`docs/roadmap.md`「保留: 外部アカウント待ち」)
