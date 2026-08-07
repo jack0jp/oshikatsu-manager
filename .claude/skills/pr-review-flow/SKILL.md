@@ -37,9 +37,16 @@ Ready後のpushではCopilotの自動レビューは走らない(CIとClaudeレ�
 `gh api`でのRuleset書き込みはClaude Codeのauto mode分類器にブロックされるため、
 この設定を変更する場合は人間が手動で行う。適用状況の確認は一覧系エンドポイント
 (`gh api repos/{owner}/{repo}/rulesets`)では`rules`が返らず誤判定するため、
-各Rulesetの`id`を控えたうえで詳細エンドポイントを使う。
+各Rulesetの`id`を控えたうえで詳細エンドポイントを使う。`id`はブランチ単位のルール一覧
+エンドポイントから取得できる(各ルールに`ruleset_id`が付き、`type`で`copilot_code_review`を
+特定できる)。
 
 ```bash
+# 1. mainに効いているRulesetのidを特定する
+gh api repos/{owner}/{repo}/rules/branches/main \
+  --jq '.[] | select(.type == "copilot_code_review") | .ruleset_id'
+
+# 2. そのidで詳細を取得し、実際に適用されている値を確認する
 gh api repos/{owner}/{repo}/rulesets/{id} \
   --jq '{enforcement, target, conditions, copilot_rules: [.rules[] | select(.type == "copilot_code_review") | .parameters]}'
 ```
