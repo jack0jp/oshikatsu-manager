@@ -6,7 +6,7 @@
 
 各フェーズのチェックリストはGitHub Issuesとして起票し、Project「推し活管理アプリ 開発」
 (`Status` / `Phase` / `Model` フィールド)で進捗を管理する。ラベルは `phase:N` と
-`agent:opus` / `agent:sonnet`。モデルの使い分けとエスカレーション基準は `CLAUDE.md`
+`agent:opus` / `agent:sonnet` / `agent:haiku`。モデルの使い分けとエスカレーション基準は `CLAUDE.md`
 「タスク管理とモデルの使い分け」を参照。
 
 ## この順序にした理由

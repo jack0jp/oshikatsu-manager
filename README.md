@@ -26,7 +26,7 @@
 
 [GitHub Projects](https://github.com/users/jack0jp/projects/1)で進捗を管理する。
 各タスクはIssue化し、`phase:N`(`docs/roadmap.md` のフェーズ)と
-`agent:opus` / `agent:sonnet`(担当モデル)のラベルを付ける。
+`agent:opus` / `agent:sonnet` / `agent:haiku`(担当モデル)のラベルを付ける。
 
 ## ブランチ運用
 
