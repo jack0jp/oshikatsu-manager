@@ -86,15 +86,20 @@ expect(dataB).toHaveLength(0);
 ```
 
 **UPDATE/DELETEが「成功したかに見える」結果だけで判定しない。**
-PostgreSQLのRLSでは、`WHERE`や`RETURNING`が対象テーブルの列を参照するUPDATE/DELETE
-(このリポジトリのテストは`.eq("id", id)`などのWHEREを必ず伴うため該当する)は、対象コマンド
-自身のUSING句に加えて、テーブルのSELECTポリシーによる可視性も要求する。
-`UPDATE ... RETURNING`は、更新後の行がSELECTポリシーを満たさないと
-エラー(`new row violates row-level security policy`)で失敗する。`DELETE`はSELECTポリシーを
-満たさない行がそもそも削除候補から除外されるため、対象を見つけられず0件になる。
+PostgreSQLのRLSでは、UPDATE/DELETEの対象行はまずコマンド自身のUSING句で絞り込まれる。
+USING句を満たさない行は**エラーなく静かに除外される**(候補行が単に0件になるだけ)。
+「他人の行を更新/削除しようとする」典型的な否定側テスト(例: `expenses_update_own`の
+`using (user_id = auth.uid())`)はこのケースに該当し、`data`は空配列、`error`は`null`になる。
+
+`UPDATE ... RETURNING`にはこれとは別の落とし穴もある。USING句を通過して実際に
+更新された新しい行の内容がテーブルのSELECTポリシーを満たさない場合、更新自体が
+エラー(`new row violates row-level security policy`)になる。これはUSING句で
+静かに弾かれるケースとは別の仕組みで、UPDATEとSELECTのポリシー条件が食い違っている
+場合にだけ起こる。単に「他人の行を更新しようとする」だけの否定側テストでは通常
+発生しない。
 
 つまり「RETURNINGが空で、エラーも出ない」という結果だけでは、(a) `WHERE`条件に一致する行が
-最初から無かったのか、(b) USING句/SELECT可視性によって正しく弾かれたのか、を区別できない。
+最初から無かったのか、(b) USING句によって正しく弾かれたのか、を区別できない。
 UPDATE/DELETEを試みた後は、対象行を見られる側(本人など)の視点で、値が実際に
 変化していないこと・行が存在し続けていることまで確認する。
 
