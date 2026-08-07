@@ -13,7 +13,7 @@
 ## ドキュメント
 
 | ファイル | 内容 |
-|---|---|
+| --- | --- |
 | [`docs/prd.md`](docs/prd.md) | 仕様、スコープ、決定事項 |
 | [`docs/roadmap.md`](docs/roadmap.md) | 開発計画、フェーズ分割 |
 | [`docs/data-model.md`](docs/data-model.md) | データモデル設計 |
@@ -40,7 +40,7 @@ Supabase CLIは `.github/workflows/supabase.yml` の `SUPABASE_CLI_VERSION` と�
 バージョンがずれると、マイグレーション由来ではなく「CLI差」でローカルとCIの挙動が食い違い、
 どちらの結果も信用できなくなる(`docs/roadmap.md` フェーズ1の注意点)。
 
-```
+```bash
 yarn install
 cp .env.example .env.local   # Supabaseの接続情報を設定
 npx supabase@2.111.0 start   # ローカルDB(Dockerが必要。バージョンは.github/workflows/supabase.ymlのSUPABASE_CLI_VERSIONと同じ値にすること)

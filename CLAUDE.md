@@ -75,7 +75,7 @@ mainはRulesetで保護されており、リポジトリ管理者(あなた)の�
 
 ## コマンド
 
-```
+```bash
 yarn dev              # 開発サーバー
 yarn lint             # ESLint
 yarn typecheck        # tsc

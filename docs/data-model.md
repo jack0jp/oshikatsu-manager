@@ -3,10 +3,12 @@
 前提: PostgreSQL (Supabase) / Supabase Auth (Google SSO) / RLSによる行レベル制御
 
 ## v0.3 での主な変更点
+
 - 削除ガードの `is_admin` 例外を**MVPスコープ外**に変更。カラムは用意するが、
   それを参照する権限判定はRLSにもアプリ層にも実装しない(フェーズ2へ)
 
 ## v0.2 での主な変更点
+
 - `event_participants.role` を廃止(編集権限は `events.owner_id` のみで決まる)
 - イベントは**全ユーザー共有のカタログ**として扱う(イベント一覧画面に全件表示)
 - 参加登録は原則**各ユーザーが自分で行う**(オーナーによる同行者設定方式を廃止)
@@ -19,7 +21,7 @@
 
 ## ER概要
 
-```
+```text
 auth.users (Supabase管理)
     │
     ├─< profiles                 … 公開用のユーザー情報
@@ -36,8 +38,9 @@ auth.users (Supabase管理)
 ```
 
 **画面との対応**
+
 | 画面 | 表示対象 |
-|---|---|
+| --- | --- |
 | イベント一覧 | 登録されている全イベント(未削除のもの)。オーナーはここから編集・削除 |
 | 自分のスケジュール | 自分が `event_participants` に登録しているイベントのみ |
 
@@ -46,7 +49,7 @@ auth.users (Supabase管理)
 ## 1. profiles
 
 | カラム | 型 | 制約 | 説明 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | id | uuid | PK, FK → auth.users.id | Supabase Authのユーザーid |
 | email | text | UNIQUE, NOT NULL | 検索キー |
 | display_name | text | | 表示名 |
@@ -77,7 +80,7 @@ auth.users (Supabase管理)
 編集・削除できるのは `owner_id` のユーザーのみ。
 
 | カラム | 型 | 制約 | 説明 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | id | uuid | PK, default gen_random_uuid() | |
 | owner_id | uuid | FK → profiles.id, NOT NULL | 登録者。編集権限を持つ唯一のユーザー。参加者かどうかとは無関係 |
 | genre | text | NOT NULL | 'takarazuka' / 'kabuki' / 'idol' / 'other' |
@@ -97,6 +100,7 @@ auth.users (Supabase管理)
 > 登録だけして自分は参加しない、というケースも表現できる。
 
 **削除のガード条件**
+
 - オーナー本人以外の参加者が1人でもいる場合、そのイベントは削除できない
   (他ユーザーのスケジュールから勝手に消えることを防ぐため)
 - 参加者がオーナーのみ、または誰もいない場合に限り論理削除が可能
@@ -111,7 +115,7 @@ auth.users (Supabase管理)
 > 両層のテストを同時に足すこと。片方だけ実装された状態がいちばん危ない。
 >
 > 実施タイミングは `docs/roadmap.md`「フェーズ2バックログ」を参照。
-
+>
 > 将来クローラーによる自動登録を行う場合、`owner_id` にシステム用アカウントを
 > 割り当てる想定。その場合の編集権限の扱いは別途検討。
 
@@ -123,7 +127,7 @@ auth.users (Supabase管理)
 参加者間に主従関係はない(招待した側が編集権限を持つわけではない)。
 
 | カラム | 型 | 制約 | 説明 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | id | uuid | PK | |
 | event_id | uuid | FK → events.id, NOT NULL | |
 | user_id | uuid | FK → profiles.id, NOT NULL | |
@@ -147,11 +151,13 @@ auth.users (Supabase管理)
 - 招待された側の行が `event_participants` に作成され、`invited_by` に招待元が入る
 
 **MVPでの挙動**
+
 - 承認フローは設けない。招待した時点で `participation_state = 'joined'` として作成し、
   相手のスケジュールに即時反映される
 - 招待された側は、自分の判断でその行を削除できる(参加取りやめ)
 
 **将来拡張(フェーズ2)**
+
 - 招待時に `participation_state = 'invited'` で作成し、相手が承認したら 'joined' に更新する
 - そのため participation_state は最初から text型で定義し、状態を増やせるようにしておく
 
@@ -169,7 +175,7 @@ auth.users (Supabase管理)
 (公式先行、協賛企業抽選、一般発売 など)。**個人スコープ**。
 
 | カラム | 型 | 制約 | 説明 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | id | uuid | PK | |
 | event_id | uuid | FK → events.id, NOT NULL | |
 | user_id | uuid | FK → profiles.id, NOT NULL | 誰の申込か |
@@ -196,7 +202,7 @@ auth.users (Supabase管理)
 支出。予算と実績を1行で持ち、実績はNULL許容。**個人スコープ**。
 
 | カラム | 型 | 制約 | 説明 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | id | uuid | PK | |
 | user_id | uuid | FK → profiles.id, NOT NULL | |
 | event_id | uuid | FK → events.id, NOT NULL | events は論理削除のため参照は保たれる |
@@ -212,6 +218,7 @@ auth.users (Supabase管理)
 
 > **削除時の分岐ロジック(アプリ層で実装)**
 > 参加取りやめ / イベントの論理削除の際、対象ユーザーの expenses を確認する。
+>
 > - `actual_amount IS NULL` の行 → 物理削除(予算は見込み値のため)
 > - `actual_amount IS NOT NULL` の行 → 残す(実績は家計の記録として保全)
 >
@@ -225,7 +232,7 @@ auth.users (Supabase管理)
 期間・ジャンル単位の予算枠。**個人スコープ**。
 
 | カラム | 型 | 制約 | 説明 |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | id | uuid | PK | |
 | user_id | uuid | FK → profiles.id, NOT NULL | |
 | period_type | text | NOT NULL | 'monthly' / 'yearly' |
@@ -241,7 +248,7 @@ auth.users (Supabase管理)
 ## RLSポリシー方針
 
 | テーブル | SELECT | INSERT | UPDATE / DELETE |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | profiles | 本人の行のみ(全カラム)。他ユーザーへは `profiles_public` ビュー(`id`/`display_name`のみ) | 本人のみ | 本人のみ(`is_admin`は列単位で保護。上記1章参照) |
 | events | 全ユーザー(`deleted_at IS NULL`) ※1 | ログインユーザー(`owner_id`=本人で作成) | `owner_id` = 本人のみ(削除は上記ガード条件つき) |
 | event_participants | 本人の行 + 他ユーザーの `visibility = 'public'` の行 | 本人の行 + 招待による他ユーザーの行 ※2 | 本人の行のみ |
