@@ -49,36 +49,10 @@
 **mainへの直接pushは禁止。**必ずブランチを作成し、PRを経由してmainにマージする。
 mainはRulesetで保護されており、リポジトリ管理者(あなた)のみ緊急時にバイパスできる。
 
-**PRはまずDraftで作成する。**
-Claude(`claude-review.yml`)は`CLAUDE_CODE_OAUTH_TOKEN`設定時にdraftのpushごとに走り、
-未設定時はスキップする。Codexは`OPENAI_API_KEY`設定時(`codex-review.yml`)、CodeRabbitは
-`drafts: true`(`.coderabbit.yaml`)でdraft中もレビュー対象になるが、CodeRabbitはFreeプランの
-レート制限を受ける(下記参照)。
-GitHub Copilotの自動レビュー(`copilot_code_review` Ruleset)は
-`review_draft_pull_requests: false`に設定済みのためdraft中は走らない。
-Draftで指摘がなくなるまで反復し、`gh pr ready`でReady for reviewに
-変えたタイミングでCopilotの最終レビューを1回受ける。Copilotは1レビューあたり
-プレミアムリクエストを消費するため、Claude/Codex/CodeRabbitとの反復で消費しないように
-するための運用(PR #18〜#32の実績分析に基づく判断)。
-
-- CodeRabbitのFreeプランはGitHub連携のPRレビューが1回/時/開発者に制限されている。
-  Draftで短時間に何度もpushしても2回目以降はレート制限でスキップされうる
-  (`docs/roadmap.md`「保留: 外部アカウント待ち」参照)。反復の主力はClaude/Codexで、
-  CodeRabbitは取れたときに追加の視点が入る、という位置づけで期待値を持つこと
-  (PR #35で実際にレート制限を確認済み。詳細は`docs/roadmap.md`「CodeRabbitの導入」参照)
-- Copilotの最終レビューは「プレミアムリクエストのquota上限に達したため実行できなかった」
-  という形で失敗することがある(PR #35で発生)。この場合レビューコメントは投稿されるが
-  中身のないもので、コードは実際にはレビューされていない。quotaを追加してから
-  `gh api repos/{owner}/{repo}/pulls/{number}/requested_reviewers -X POST
-  -f 'reviewers[]=copilot-pull-request-reviewer[bot]'` で再リクエストする
-- Ready化後にCopilot/CodeRabbitの指摘で追加修正が発生した場合は、都度pushしてよい
-  (Ready後はpushのたびに再レビューが走る。ただしCodeRabbitは上記レート制限の対象)
-- シークレット未設定の間、Codexは自動でスキップされる(`docs/roadmap.md`「保留: 外部アカウント待ち」)
-- 人間の承認レビューは必須にしていない(現状は開発者本人のみのため。GitHubは
-  PR作成者自身の承認をカウントしない)。マージの実行自体が「人間の確認」に当たる
-  (`docs/prd.md` 8.5)
-- ボットの指摘は機械的に全適用しない。「本物の修正 / 妥当なnitpick / 誤検知」に
-  分類し、何を直して何を意図的に見送ったかをPRにコメントする
+**PRはまずDraftで作成する。**Draftでレビューボットと反復し、指摘が尽きてから
+`gh pr ready`でReady化してGitHub Copilotの最終レビューを1回だけ受ける。
+**手順の詳細(ボットの発火条件、レート制限、quota失敗時の対処、Ready後の運用、
+指摘の分類とマージ)は `pr-review-flow` skillを読む。PR作業の前に必ず呼ぶこと。**
 
 ## タスク管理とモデルの使い分け
 
@@ -116,5 +90,5 @@ yarn gen:types        # Supabase生成型の再生成
 テストを新しく書いたら、**対象を壊して赤くなることを確認してから戻す**。
 壊れたコードでも通るテストは、何か別のものをテストしている。
 
-PRを作成したらCIとレビューボットの結果を待ち、指摘を分類してから自分でマージする。
+PRを作成したらCIとレビューボットの結果を待ち、指摘を分類してから自分でマージする(手順は`pr-review-flow` skill)。
 mainに直接pushしない。
