@@ -7,7 +7,8 @@ description: このリポジトリのPR運用手順。PRを作成する / Draft�
 
 ## 原則
 
-Draft先行の目的は、**Copilotのプレミアムリクエスト消費を「Ready化時の1回」に限定すること**。
+Draft先行の目的は、**Copilotのプレミアムリクエスト消費を「Ready化時の1回」に限定すること**
+(ただしquota失敗時・実装変更時は、後述の「Ready後の運用」の条件でマージ直前に手動再リクエストを最大1回まで許容する)。
 Claude/Codex/CodeRabbitはDraft中に何度反復してもプレミアムリクエストを消費しない。
 PR #18〜#32の実績分析(Claude/Copilotの指摘重複率、Copilotのクレジット消費が
 実測で1レビューあたりプレミアムリクエスト13回相当。公式の固定値ではなく実績値)に基づく判断。
@@ -33,9 +34,16 @@ Ready化後の追加修正は、ローカルで全部直してからまとめて
 `copilot_code_review` Rulesetの`review_on_push`を`false`にしておけば、
 Ready後のpushではCopilotの自動レビューは走らない(CIとClaudeレビュー、CodeRabbitは
 上記のとおり通常どおり走るので、機械的なバックストップは失われない)。
-**この設定は2026-08-07時点でリポジトリに未適用。**`gh api`でのRuleset書き込みは
-Claude Codeのauto mode分類器にブロックされるため、人間が手動で適用する必要がある
-(適用状況は`gh api repos/{owner}/{repo}/rulesets`で`review_on_push`の値を確認できる)。
+**この設定は2026-08-07時点でリポジトリに未適用(mainに適用されるactiveなRulesetで
+`review_on_push: true`のまま)。**`gh api`でのRuleset書き込みはClaude Codeのauto mode
+分類器にブロックされるため、人間が手動で適用する必要がある。適用状況の確認は一覧系
+エンドポイント(`gh api repos/{owner}/{repo}/rulesets`)では`rules`が返らず誤判定するため、
+各Rulesetの`id`を控えたうえで詳細エンドポイントを使う。
+
+```bash
+gh api repos/{owner}/{repo}/rulesets/{id} \
+  | jq '{enforcement, target, conditions, copilot_rules: [.rules[] | select(.type == "copilot_code_review") | .parameters]}'
+```
 未適用のままだとReady後のpushのたびにCopilotの自動レビューが走り、
 プレミアムリクエストを消費し続ける点に注意。
 
