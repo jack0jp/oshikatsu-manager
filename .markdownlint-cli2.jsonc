@@ -1,0 +1,17 @@
+{
+  // ルール一覧: https://github.com/DavidAnson/markdownlint/blob/main/doc/md013.md 形式
+  // 個別offにする場合は理由を書く。理由が消えたらエントリも消す(docs/lint-policy.md「例外の作法」)。
+  "config": {
+    "default": true,
+    // 日本語の長文段落は改行位置の慣習がなく、行長制限は誤検知の温床になるだけで実バグを捕まえない。
+    "MD013": false,
+    // **強調**を見出し代わりに使う書き方が docs/ 全体で既に定着している。実見出しへの昇格は
+    // 目次構造を変える意味のある変更で、機械的に一括変換すべきものではない。
+    "MD036": false
+  },
+  "globs": [
+    "docs/**/*.md",
+    ".claude/skills/**/*.md",
+    "*.md"
+  ]
+}

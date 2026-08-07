@@ -75,9 +75,9 @@ mainはRulesetで保護されており、リポジトリ管理者(あなた)の�
 
 ## コマンド
 
-```
+```bash
 yarn dev              # 開発サーバー
-yarn lint             # ESLint
+yarn lint             # ESLint + markdownlint-cli2
 yarn typecheck        # tsc
 yarn test             # Vitest (unit)
 yarn test:db          # Vitest (DB統合。事前に supabase start が必要)
