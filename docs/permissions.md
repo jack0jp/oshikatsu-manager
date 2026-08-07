@@ -107,7 +107,8 @@ UPDATE/DELETEを試みた後は、対象行を見られる側(本人など)の�
 
 ```typescript
 // 更新前に本人視点で元の値を控えておく
-const { data: before } = await asUserA.from("expenses").select("amount").eq("id", id).single();
+const { data: before, error: beforeError } = await asUserA.from("expenses").select("amount").eq("id", id).single();
+expect(beforeError).toBeNull();
 
 // これだけでは何も検証していない(WHERE不一致で0件なのか、正しく弾かれて0件なのか区別できない)
 const { data, error } = await asUserB.from("expenses").update({ amount: 1 }).eq("id", id).select();
@@ -115,7 +116,8 @@ expect(error).toBeNull();
 expect(data).toHaveLength(0);
 
 // これが本体。本人(対象行を見られる側)の視点で値が実際に変化していないことを確認する
-const { data: unchanged } = await asUserA.from("expenses").select("amount").eq("id", id).single();
+const { data: unchanged, error: unchangedError } = await asUserA.from("expenses").select("amount").eq("id", id).single();
+expect(unchangedError).toBeNull();
 expect(unchanged?.amount).toBe(before?.amount);
 ```
 
