@@ -31,21 +31,18 @@ Draftで指摘がなくなるまで反復する。
 ## Ready後の運用
 
 Ready化後の追加修正は、ローカルで全部直してからまとめて1回でpushする。
-`copilot_code_review` Rulesetの`review_on_push`を`false`にしておけば、
+`copilot_code_review` Rulesetの`review_on_push`は`false`に設定済み(2026-08-07適用)なので、
 Ready後のpushではCopilotの自動レビューは走らない(CIとClaudeレビュー、CodeRabbitは
 上記のとおり通常どおり走るので、機械的なバックストップは失われない)。
-**この設定は2026-08-07時点でリポジトリに未適用(mainに適用されるactiveなRulesetで
-`review_on_push: true`のまま)。**`gh api`でのRuleset書き込みはClaude Codeのauto mode
-分類器にブロックされるため、人間が手動で適用する必要がある。適用状況の確認は一覧系
-エンドポイント(`gh api repos/{owner}/{repo}/rulesets`)では`rules`が返らず誤判定するため、
+`gh api`でのRuleset書き込みはClaude Codeのauto mode分類器にブロックされるため、
+この設定を変更する場合は人間が手動で行う。適用状況の確認は一覧系エンドポイント
+(`gh api repos/{owner}/{repo}/rulesets`)では`rules`が返らず誤判定するため、
 各Rulesetの`id`を控えたうえで詳細エンドポイントを使う。
 
 ```bash
 gh api repos/{owner}/{repo}/rulesets/{id} \
-  | jq '{enforcement, target, conditions, copilot_rules: [.rules[] | select(.type == "copilot_code_review") | .parameters]}'
+  --jq '{enforcement, target, conditions, copilot_rules: [.rules[] | select(.type == "copilot_code_review") | .parameters]}'
 ```
-未適用のままだとReady後のpushのたびにCopilotの自動レビューが走り、
-プレミアムリクエストを消費し続ける点に注意。
 
 Copilotの再レビューが必要なのは次の2つの場合だけで、マージ直前に手動で1回だけ行う。
 
