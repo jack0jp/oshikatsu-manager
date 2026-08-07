@@ -179,7 +179,8 @@ Web UIとMCPサーバーは同じドメインロジック・同じバリデー�
 - 日付処理: **date-fns**(カレンダーの月グリッド生成を含む)
 - スキーマ定義/バリデーション: **Zod**
 - テスト: **Vitest** (ユニット + DB統合)
-- 静的解析: **ESLint** (typescript-eslint `strict` / eslint-plugin-sonarjs / eslint-plugin-security)
+- 静的解析: **ESLint** (typescript-eslint `strict` / eslint-plugin-sonarjs / eslint-plugin-security) +
+  **markdownlint-cli2** (`docs/**/*.md` 等。詳細は`docs/lint-policy.md`)
 - CI: **GitHub Actions** (ubuntu-latestのみ。実行環境がVercel/Linuxに一本化されているため複数OSは不要)
 - コードレビュー: **別モデル(Codex)による自動レビューを全PRで実行**
 
@@ -289,7 +290,7 @@ RLS検証の最小セット:
 
 | ジョブ | 内容 | ゲート |
 | --- | --- | --- |
-| lint / typecheck | ESLint + tsc | ゲート |
+| lint / typecheck | ESLint + markdownlint-cli2 + tsc | ゲート |
 | unit test | pure関数のテスト(依存なし・高速) | ゲート |
 | db test | Supabaseローカル起動 + RLS検証 | ゲート |
 | supabase型検証 | 生成型を再生成し、差分がないことを確認(8.2) | ゲート |
