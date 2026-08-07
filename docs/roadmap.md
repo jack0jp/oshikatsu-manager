@@ -86,7 +86,7 @@
 | Claudeレビューの本稼働化 | **完了。** `CLAUDE_CODE_OAUTH_TOKEN` シークレット追加 + GitHub App([github.com/apps/claude](https://github.com/apps/claude))インストール済み。PRへの総評+インラインコメント投稿を実PRで確認済み |
 | Copilot自動レビューの有効化 | **完了。** Copilot Proに加入し、Rulesetに `copilot_code_review` ルールを追加。実PRでのコメント投稿を確認済み |
 | Codexレビューの本稼働化 | **保留(意図的)。** OpenAI APIキーを取得しない方針のため、`codex-review.yml` はシークレット未設定のまま自動スキップし続ける。将来キーを取得したら `OPENAI_API_KEY` をリポジトリシークレットに追加するだけで動き出す |
-| CodeRabbitの導入 | **完了。** PR #18〜#32の実績分析でClaude/Copilotの指摘重複率と、Copilotのクレジット消費(1レビューあたりプレミアムリクエスト13回相当)を踏まえ、無料の3人目のレビュアーとして追加。GitHub Appをインストール済み。`.coderabbit.yaml`で`drafts: true`を設定し、Draft PRでも反復レビューされることをPR #35で確認済み。Freeプランのレート制限はGitHub連携のPRレビューが**1回/時/開発者**(IDE/CLIは3回/時)で、当初調べていた「200ファイル/時・4レビュー/時」は誤り(CodeRabbit自身のレビューコメントで訂正された。参照: [docs.coderabbit.ai/management/plans](https://docs.coderabbit.ai/management/plans))。短時間の連続pushでは2回目以降のレビューがスキップされうる前提で運用する |
+| CodeRabbitの導入 | **完了。** PR #18〜#32の実績分析でClaude/Copilotの指摘重複率と、Copilotのクレジット消費(1レビューあたりプレミアムリクエスト13回相当)を踏まえ、無料の3人目のレビュアーとして追加。GitHub Appをインストール済み。`.coderabbit.yaml`で`drafts: true`を設定し、Draft PRでも反復レビューされることをPR #35で確認済み(Copilotがdraft中は走らずReady化後に1回だけ走るという挙動自体は、CLAUDE.mdの既存記載を踏襲したものでPR #35時点では未検証)。Freeプランのレート制限はGitHub連携のPRレビューが**1回/時/開発者**(IDE/CLIは3回/時)で、当初調べていた「200ファイル/時・4レビュー/時」は誤り(CodeRabbit自身のレビューコメントで訂正された。参照: [docs.coderabbit.ai/management/plans](https://docs.coderabbit.ai/management/plans))。短時間の連続pushでは2回目以降のレビューがスキップされうる前提で運用する |
 
 > シークレットは `gh secret set <NAME>` などリポジトリの設定画面から**あなた自身が追加すること**。
 > Claudeにトークン・APIキーの値を渡さない。

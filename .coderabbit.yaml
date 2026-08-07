@@ -14,6 +14,8 @@ reviews:
     # 既定値5だと5コミット分レビューした時点で自動レビューが止まり、以降は
     # `@coderabbitai review` の手動実行が必要になる。pushのたびに反復する
     # 運用と相性が悪いため無効化する(実際の頻度はFreeプランのレート制限が握る)。
+    # 0が「無制限」として機能するかはCodeRabbit公式ドキュメント通りの想定であり、
+    # 5コミットを超えて継続することの実地確認はまだ済んでいない。
     auto_pause_after_reviewed_commits: 0
   path_instructions:
     - path: "**/*.{ts,tsx}"
