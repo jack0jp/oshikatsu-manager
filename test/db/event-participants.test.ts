@@ -106,7 +106,9 @@ test("招待時にparticipation_stateを上書きしようとすると失敗す�
   expect(error).not.toBeNull();
 });
 
-test("参加登録していないユーザーは他人を招待できない", async () => {
+// オーナーでも参加者でもないユーザーは招待できない
+// (docs/permissions.md「最小の検証セット」)。
+test("オーナーでも参加者でもないユーザーは他人を招待できない", async () => {
   const [owner, nonParticipant, invitee] = await Promise.all([
     createTestUser(),
     createTestUser(),
@@ -121,6 +123,49 @@ test("参加登録していないユーザーは他人を招待できない", as
     status: "considering",
   });
   expect(error).not.toBeNull();
+
+  // 拒否されたINSERTで行が作られていないことを、対象行を見られる本人(invitee)視点で確認する。
+  const { data: inviteeRows, error: inviteeRowsError } = await invitee.client
+    .from("event_participants")
+    .select()
+    .eq("event_id", event.id)
+    .eq("user_id", invitee.userId);
+  expect(inviteeRowsError).toBeNull();
+  expect(inviteeRows).toHaveLength(0);
+});
+
+// issue #34 の決定そのもの。owner_id は「情報の管理者」であってイベントの主催・招待の
+// 権限を意味しない(docs/data-model.md 2章)ため、オーナーであっても自分自身が
+// 参加登録していなければ招待できない。
+test("参加登録していないオーナーは他人を招待できない", async () => {
+  const [owner, invitee] = await Promise.all([createTestUser(), createTestUser()]);
+  const event = await createEvent(owner);
+
+  // オーナー自身は参加登録しない(この決定の検証対象そのもの)。
+  const { data: ownerRows, error: ownerRowsError } = await owner.client
+    .from("event_participants")
+    .select()
+    .eq("event_id", event.id)
+    .eq("user_id", owner.userId);
+  expect(ownerRowsError).toBeNull();
+  expect(ownerRows).toHaveLength(0);
+
+  const { error } = await owner.client.from("event_participants").insert({
+    event_id: event.id,
+    user_id: invitee.userId,
+    invited_by: owner.userId,
+    status: "considering",
+  });
+  expect(error).not.toBeNull();
+
+  // 拒否されたINSERTで行が作られていないことを、対象行を見られる本人(invitee)視点で確認する。
+  const { data: inviteeRows, error: inviteeRowsError } = await invitee.client
+    .from("event_participants")
+    .select()
+    .eq("event_id", event.id)
+    .eq("user_id", invitee.userId);
+  expect(inviteeRowsError).toBeNull();
+  expect(inviteeRows).toHaveLength(0);
 });
 
 test("本人は自分の参加ステータスを変更できる", async () => {
