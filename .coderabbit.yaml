@@ -1,0 +1,50 @@
+language: "ja-JP"
+
+reviews:
+  profile: assertive
+  auto_review:
+    enabled: true
+    # デフォルトはdraft PRをスキップするが、このリポジトリはDraftで
+    # Claude/Codexと反復してからReady化する運用(CLAUDE.md「ブランチとPR」)。
+    # CodeRabbitはCopilotと違いdraft中も含めて都度レビュー対象にする
+    # (実際に消費するのはFreeプランのレート制限: GitHub連携のPRレビューは
+    # 1回/時/開発者。1時間に複数pushしても2回目以降はスキップされうる。
+    # 詳細: https://docs.coderabbit.ai/management/plans)
+    drafts: true
+    # 既定値5だと5コミット分レビューした時点で自動レビューが止まり、以降は
+    # `@coderabbitai review` の手動実行が必要になる。pushのたびに反復する
+    # 運用と相性が悪いため無効化する。PR #35で7コミット分pushした後に
+    # `@coderabbitai review` を手動実行したところ、応答は「Review rate limited」
+    # であり、「レビューがpauseされているので手動実行が必要」という案内には
+    # ならなかった(pause中ならその旨のメッセージが返る仕様)。つまりauto_pauseの
+    # 5コミット上限には引っかかっていない = 0が意図通り無効化として機能している
+    # と判断できる。実際にpushのたびのレビューが止まった原因はレート制限であり、
+    # auto_pauseとは別物(詳細はdocs/roadmap.md「CodeRabbitの導入」参照)。
+    auto_pause_after_reviewed_commits: 0
+  path_instructions:
+    - path: "**/*.{ts,tsx}"
+      instructions: |
+        CLAUDE.md の絶対ルールに違反していないか重点的に確認すること。
+        - `as` によるキャスト、`any`、`@ts-ignore` / `@ts-expect-error` / `eslint-disable` による
+          エラーの黙殺がないか
+        - common/ に置くべき判断ロジック(フィルタ・並び順・検証・集計・権限判定・日付計算)が
+          app/ や mcp/ に複製・直書きされていないか
+        - 型を手書きせず、生成型(supabase/types.ts)かZodスキーマの z.infer から導出しているか
+    - path: "supabase/migrations/**"
+      instructions: |
+        docs/data-model.md・docs/permissions.md の権限マトリクスと突き合わせて確認すること。
+        - RLSポリシー内の自己参照サブクエリ(同一テーブルを問い合わせるEXISTS等)は
+          呼び出し元のRLS越しに評価され、本来見えるべき行が見えず誤判定することがある
+          (security definer関数でラップする必要がないか確認する)
+        - security definer関数を使う場合、`set search_path = ''`または安全な固定値を
+          必須にし、内部の参照はスキーマ修飾名(`public.xxx`)にしているか。
+          `PUBLIC`ロールへの不要なEXECUTE権限が残っていないか(必要なロールにのみGRANTする)
+    - path: "test/db/**"
+      instructions: |
+        docs/testing.md・docs/permissions.md「RLS検証の必須要件」に沿っているか確認すること。
+        - service_roleキーを使っていないか
+        - 否定側のテストが、対象行を見られない側から実行した結果(RETURNINGやSELECTが空)
+          だけで判定していないか。`WHERE`不一致で0件なのか、RLSで正しく弾かれて0件なのかは
+          その視点からは区別できない。UPDATEは対象行を見られる側の視点で値が変化していない
+          ことを、DELETEは行が存在し続けていることを、INSERTは対象行を見られる側の視点で
+          新しい行が作られていないことを、それぞれ確認しているか(service_roleは使わない)

@@ -75,13 +75,56 @@ service_roleはRLSをバイパスする。これで通ったテストは、**RLS
 
 正常系だけのテストは、権限が全開放されていても通る。否定側が本体。
 
-```
+```typescript
 // これだけでは何も検証していない
-expect(await asUserA.from("expenses").select()).toHaveLength(3);
+const { data: dataA, error: errorA } = await asUserA.from("expenses").select();
+expect(errorA).toBeNull();
+expect(dataA).toHaveLength(3);
 
 // これが本体
-expect(await asUserB.from("expenses").select()).toHaveLength(0);
+const { data: dataB, error: errorB } = await asUserB.from("expenses").select();
+expect(errorB).toBeNull();
+expect(dataB).toHaveLength(0);
 ```
+
+**UPDATE/DELETEが「成功したかに見える」結果だけで判定しない。**
+PostgreSQLのRLSでは、UPDATE/DELETEの対象行はまずコマンド自身のUSING句で絞り込まれる。
+USING句を満たさない行は**エラーなく静かに除外される**(候補行が単に0件になるだけ)。
+「他人の行を更新/削除しようとする」典型的な否定側テスト(例: `expenses_update_own`の
+`using (user_id = auth.uid())`)はこのケースに該当し、`data`は空配列、`error`は`null`になる。
+
+`UPDATE ... RETURNING`にはこれとは別の落とし穴もある。USING句を通過して実際に
+更新された新しい行の内容がテーブルのSELECTポリシーを満たさない場合、PostgreSQL公式
+ドキュメント([CREATE POLICY](https://www.postgresql.org/docs/current/sql-createpolicy.html))
+の通り更新自体がエラーになる("inserted or updated rows to be returned are never
+silently ignored")。単に「他人の行を更新しようとする」だけの否定側テストは、通常
+USING句の時点で候補から除外されるため、このエラーには到達しない。
+
+つまり「RETURNINGが空で、エラーも出ない」という結果だけでは、(a) `WHERE`条件に一致する行が
+最初から無かったのか、(b) USING句によって正しく弾かれたのか、を区別できない。
+UPDATE/DELETEを試みた後は、対象行を見られる側(本人など)の視点で、値が実際に
+変化していないこと・行が存在し続けていることまで確認する。
+
+```typescript
+// 更新前に本人視点で元の値を控えておく
+const { data: before, error: beforeError } = await asUserA.from("expenses").select("amount").eq("id", id).single();
+expect(beforeError).toBeNull();
+
+// これだけでは何も検証していない(WHERE不一致で0件なのか、正しく弾かれて0件なのか区別できない)
+const { data, error } = await asUserB.from("expenses").update({ amount: 1 }).eq("id", id).select();
+expect(error).toBeNull();
+expect(data).toHaveLength(0);
+
+// これが本体。本人(対象行を見られる側)の視点で値が実際に変化していないことを確認する
+const { data: unchanged, error: unchangedError } = await asUserA.from("expenses").select("amount").eq("id", id).single();
+expect(unchangedError).toBeNull();
+expect(unchanged?.amount).toBe(before?.amount);
+```
+
+**INSERTの`RETURNING`にも同じ注意が必要。** 招待のように自分以外のユーザーの行を作成する
+操作では、作成した本人(自分)がその行をSELECTポリシー上見られないことがある。この場合
+`INSERT ... RETURNING` はINSERT自体が要件を満たしていてもRLS違反エラーを返す。
+`.select()` を付けずにINSERTするか、作成された行の中身は対象ユーザー自身の視点で確認すること。
 
 ### 3. マトリクスを表のままテストに写す
 
