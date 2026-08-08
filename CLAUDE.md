@@ -173,7 +173,11 @@ Issueに着手するときは、**判断フェーズをOpusのサブエージェ
 
 - 親Issue: **ラベルとProjectの `Model` は判断を下したモデルのまま。**書き換えない
 - Sub-issue: 引き継ぎ先の `agent:*` ラベルとProjectの `Model`(通常のIssue運用と同様、
-  両方を対応させる)、親と同じ `phase:N`、Projectに登録して `Status` を Todo → In Progress
+  両方を対応させる)、親と同じ `phase:N`、Projectに登録して `Status` を Todo → In Progress。
+  受け入れ条件を満たしたら、担当したモデルが `Status` を `Done` にしてIssueをcloseする。
+  「PRは分けない」ため通常の `Closes #N` によるSub-issueの自動closeは効かない(親Issueの
+  `Closes #N` は親のみを指す)。close忘れは機械的に検出できないため、受け入れ条件達成の
+  確認と同じタイミングで行うこと
 - **PRは分けない。**ブランチとDraft PRは1つのまま、下位モデルが続きをpushする。
   Sub-issueは作業の追跡単位であってPRの単位ではない(分けると、実装途中で分担する
   ケースを表現できなくなる)
