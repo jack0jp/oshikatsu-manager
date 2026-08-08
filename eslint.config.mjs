@@ -28,30 +28,31 @@ const exceptions = [];
 // 向きが逆でもTypeScriptは通り、テストも緑になるため、ここで止めないと誰も気づかない。
 //
 // 内部モジュールは `@/` エイリアスで書く規約だが、相対パス(`../../lib/x`)で書けば
-// すり抜けられてしまうので、両方の表記を並べる。npmパッケージの深いパス
-// (`somepkg/lib/...`)を巻き込まないよう `**/lib/**` のような広いパターンは使わない。
-const RELATIVE_DEPTHS = [1, 2, 3, 4, 5];
-
-const layer = (dir) => [
-  `@/${dir}`,
-  `@/${dir}/**`,
-  ...RELATIVE_DEPTHS.flatMap((depth) => {
-    const up = "../".repeat(depth);
-    return [`${up}${dir}`, `${up}${dir}/**`];
-  }),
-];
+// すり抜けられてしまうので、両方の表記を並べる。
+//
+// 相対側は階層数を数えず `../**/` で受ける。`../` を必ず先頭に要求するので、
+// npmパッケージの深いパス(`somepkg/lib/...`)は巻き込まない。`**/lib/**` のような
+// 広いパターンだと巻き込むため使わない。
+//
+// 副作用として `lib/a/b.ts` から `../common/x`(= `lib/common/x`)のような
+// 「同じ名前のサブディレクトリへの相対import」も止まる。層と同名のサブディレクトリは
+// そもそも紛らわしいので、この誤検知は許容する。
+const layer = (dir) => [`@/${dir}`, `@/${dir}/**`, `../**/${dir}`, `../**/${dir}/**`];
 
 // パッケージ側も `paths` ではなく `patterns` で指定する。`paths` は完全一致しか見ないため、
 // `next` を止めても `next/headers` がすり抜ける。
+// `next-*` / `react-*` まで含めるのは、`next-auth` `react-hook-form` のようなハイフン系が
+// `next/**` `react/**` ではマッチせず抜けるため。
 const SUPABASE_CLIENT_PACKAGES = ["@supabase/*", "@supabase/**"];
 const WEB_FRAMEWORK_PACKAGES = [
   "next",
-  "next/*",
   "next/**",
+  "next-*",
+  "next-*/**",
   "react",
-  "react/*",
-  "react-dom",
-  "react-dom/*",
+  "react/**",
+  "react-*",
+  "react-*/**",
 ];
 
 const MESSAGES = {

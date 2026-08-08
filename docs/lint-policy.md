@@ -97,10 +97,14 @@ mcp/ ──┘
 
 | 層 | 禁止するimport | 理由 |
 | --- | --- | --- |
-| `common/` | `app/` `lib/` `mcp/` / `next*` `react*` / `@supabase/*` | 判断ロジック層。何かに依存した瞬間に「Supabaseもブラウザも無しに全ルールをテストできる」(`docs/roadmap.md` フェーズ2の完了条件)が壊れる |
+| `common/` | `app/` `lib/` `mcp/` / Next.js・React系 / `@supabase/*` | 判断ロジック層。何かに依存した瞬間に「Supabaseもブラウザも無しに全ルールをテストできる」(`docs/roadmap.md` フェーズ2の完了条件)が壊れる |
 | `lib/` | `app/` `mcp/` / `common/` の値としてのimport(`import type` は可) | I/O層にルールを持たせない。呼び出し側に依存させない |
 | `app/` | `mcp/` / `@supabase/*` | クエリは `lib/` に置く。2経路を直結させない |
-| `mcp/` | `app/` / `next*` `react*` / `@supabase/*` | stdioサーバーがNext.jsを丸ごと読み込むのを防ぐ |
+| `mcp/` | `app/` / Next.js・React系 / `@supabase/*` | stdioサーバーがNext.jsを丸ごと読み込むのを防ぐ |
+
+「Next.js・React系」は `next` `next/**` `next-*` `next-*/**` `react` `react/**`
+`react-*` `react-*/**` を指す。`next-auth` `react-hook-form` のようなハイフン系の
+パッケージ名は `next/**` `react/**` ではマッチしないので、別に列挙している。
 
 `app/` から `lib/` へのimportは**禁止していない。**`app/` が `lib/` のクエリ関数を呼ぶこと自体は
 正当なI/O呼び出しで、これを塞ぐと今度はSupabaseクライアントを直接握ったクエリが `app/` に
@@ -128,9 +132,12 @@ every some sort toSorted reduce reduceRight
 
 - **パッケージ名も `paths` ではなく `patterns` に書く。**`paths` は完全一致しか見ないため、
   `next` を禁止しても `next/headers` がすり抜ける
-- **相対パスも列挙する。**内部モジュールは `@/` エイリアスで書く規約だが、`../../lib/x` と
-  書けばエイリアスのパターンをすり抜ける。両方の表記を並べている(相対は5階層まで)。
-  逆に `**/lib/**` のような広いパターンは使わない。npmパッケージの深いパスを巻き込む
+- **相対パスも塞ぐ。ただし階層数を数えない。**内部モジュールは `@/` エイリアスで書く規約だが、
+  `../../lib/x` と書けばエイリアスのパターンをすり抜ける。かといって `../` の個数を
+  列挙すると、その数が検出の上限になる(App Routerのルート木は5階層を簡単に超える)。
+  `../**/lib` `../**/lib/**` の形で受け、深さに依存しないようにしている。
+  先頭に `../` を要求するのでnpmパッケージの深いパスは巻き込まない
+  (逆に `**/lib/**` のような広いパターンは巻き込むので使わない)
 - **`lib/` の `common/` 制約だけ `@typescript-eslint/no-restricted-imports` を使う。**
   `allowTypeImports` は拡張ルール側にしかない。型を二重定義しない方針(上記「型の出どころ」)と
   両立させるため、型のimportは通す必要がある
@@ -141,6 +148,15 @@ every some sort toSorted reduce reduceRight
 (`supabase.from(...).select().filter("col", "eq", v)`)、同じ名前で誤検知する。
 `lib/` 内での `.reduce()` による集計は機械では止まらない。`lib/` 側は
 「`common/` を値としてimportしない」制約だけで押さえている。
+
+**層と同名のサブディレクトリへの相対importは誤検知する。**`lib/a/b.ts` から
+`../common/x`(= `lib/common/x`)と書くと、トップレベルの `common/` への
+層越えと区別が付かず止まる。層と同じ名前のサブディレクトリはそもそも紛らわしいので、
+この方向の誤検知は許容している。
+
+**`no-restricted-syntax` はメソッド名しか見ていない。**配列でないオブジェクトの
+`.find()` や `.sort()` も止まる。`app/` / `mcp/` にそういう対象が出てきたら、
+インラインでdisableせず「例外の作法」に従って設定ファイルに理由付きで置く。
 
 導入時点(issue #43)で `app/` はNext.jsの雛形のみ、`lib/` と `mcp/` は空だったため、
 違反は1件もなく、drainを挟まず**最初からerror**で入れた。
