@@ -164,8 +164,8 @@ Issueに着手するときは、**判断フェーズをOpusのサブエージェ
 **追跡はSub-issueで行う。**
 
 - 親Issue: **ラベルとProjectの `Model` は判断を下したモデルのまま。**書き換えない
-- Sub-issue: 引き継ぎ先の `agent:*` ラベル、親と同じ `phase:N`、Projectに登録して
-  `Status` を Todo → In Progress
+- Sub-issue: 引き継ぎ先の `agent:*` ラベルとProjectの `Model`(通常のIssue運用と同様、
+  両方を対応させる)、親と同じ `phase:N`、Projectに登録して `Status` を Todo → In Progress
 - **PRは分けない。**ブランチとDraft PRは1つのまま、下位モデルが続きをpushする。
   Sub-issueは作業の追跡単位であってPRの単位ではない(分けると、実装途中で分担する
   ケースを表現できなくなる)
