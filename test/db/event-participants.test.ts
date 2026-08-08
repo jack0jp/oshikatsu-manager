@@ -262,6 +262,14 @@ test("削除済みイベントには支出を持つユーザーも参加登録�
     .from("event_participants")
     .insert({ event_id: event.id, user_id: spender.userId, status: "considering" });
   expect(error).not.toBeNull();
+
+  const { data: rows, error: rowsError } = await spender.client
+    .from("event_participants")
+    .select()
+    .eq("event_id", event.id)
+    .eq("user_id", spender.userId);
+  expect(rowsError).toBeNull();
+  expect(rows).toHaveLength(0);
 });
 
 // 過剰に塞いでいないことの確認。PO確認で「既存の参加行のUPDATEは現状どおり許可する」と
