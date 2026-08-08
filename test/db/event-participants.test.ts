@@ -168,6 +168,161 @@ test("参加登録していないオーナーは他人を招待できない", as
   expect(inviteeRows).toHaveLength(0);
 });
 
+// --- 削除済みイベントへの参加登録・招待 (issue #54) -------------------------------
+// docs/permissions.md 権限マトリクス ※1。塞ぐのは新規INSERTのみで、既存の参加行の
+// UPDATE / DELETE は削除後もできる(その確認も下にある)。
+
+// issue #54 の攻撃手順そのもの。オーナーは非オーナー参加者がゼロなら自分のイベントを
+// 論理削除できるため、「自分だけ参加登録 → 削除 → 招待」で他人のスケジュールに
+// 削除済みイベントを差し込めてしまっていた。
+test("削除済みイベントには他人を招待できない(参加登録済みの招待者であっても)", async () => {
+  const [owner, invitee] = await Promise.all([createTestUser(), createTestUser()]);
+  const event = await createEvent(owner);
+  // オーナー自身は参加登録する(招待の前提条件を満たす。issue #34)。
+  const joinResult = await owner.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: owner.userId, status: "considering" });
+  expect(joinResult.error).toBeNull();
+
+  // 非オーナー参加者がいないので、この論理削除は成功する(guard_event_deletion)。
+  const deleteResult = await owner.client
+    .from("events")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", event.id);
+  expect(deleteResult.error).toBeNull();
+
+  const { error } = await owner.client.from("event_participants").insert({
+    event_id: event.id,
+    user_id: invitee.userId,
+    invited_by: owner.userId,
+    status: "considering",
+  });
+  expect(error).not.toBeNull();
+
+  // 拒否されたINSERTで行が作られていないことを、対象行を見られる本人(invitee)視点で確認する。
+  // inviteeは削除済みイベント自体は見られないが、自分のevent_participants行は見られる。
+  const { data: inviteeRows, error: inviteeRowsError } = await invitee.client
+    .from("event_participants")
+    .select()
+    .eq("event_id", event.id)
+    .eq("user_id", invitee.userId);
+  expect(inviteeRowsError).toBeNull();
+  expect(inviteeRows).toHaveLength(0);
+});
+
+// 招待経路だけを塞いでも足りない。オーナーは削除後も自分のイベントを閲覧できる
+// (events_select_not_deleted_or_referenced)ため、自己参加登録の経路が実在する。
+test("削除済みイベントには自分で参加登録できない(オーナーであっても)", async () => {
+  const owner = await createTestUser();
+  const event = await createEvent(owner);
+  const deleteResult = await owner.client
+    .from("events")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", event.id);
+  expect(deleteResult.error).toBeNull();
+
+  // オーナーは削除後もこのイベントを見られる。つまり「見えないから登録できない」のではなく、
+  // INSERTポリシーが弾いていることを確認している。
+  const { data: visible } = await owner.client.from("events").select().eq("id", event.id);
+  expect(visible).toHaveLength(1);
+
+  const { error } = await owner.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: owner.userId, status: "considering" });
+  expect(error).not.toBeNull();
+
+  const { data: rows, error: rowsError } = await owner.client
+    .from("event_participants")
+    .select()
+    .eq("event_id", event.id)
+    .eq("user_id", owner.userId);
+  expect(rowsError).toBeNull();
+  expect(rows).toHaveLength(0);
+});
+
+// オーナー以外にも、削除済みイベントを見られる経路がある(そのイベントに支出を持つユーザー)。
+// こちらからも参加登録できないことを確認する。
+test("削除済みイベントには支出を持つユーザーも参加登録できない", async () => {
+  const [owner, spender] = await Promise.all([createTestUser(), createTestUser()]);
+  const event = await createEvent(owner);
+  const expenseResult = await spender.client
+    .from("expenses")
+    .insert({ user_id: spender.userId, event_id: event.id, category: "ticket" });
+  expect(expenseResult.error).toBeNull();
+  const deleteResult = await owner.client
+    .from("events")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", event.id);
+  expect(deleteResult.error).toBeNull();
+
+  const { data: visible } = await spender.client.from("events").select().eq("id", event.id);
+  expect(visible).toHaveLength(1);
+
+  const { error } = await spender.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: spender.userId, status: "considering" });
+  expect(error).not.toBeNull();
+});
+
+// 過剰に塞いでいないことの確認。PO確認で「既存の参加行のUPDATEは現状どおり許可する」と
+// 決めた(issue #54)。この2件が落ちたら、INSERT以外にも条件がかかっている。
+test("削除済みイベントでも既存の参加行のステータスは変更できる", async () => {
+  const owner = await createTestUser();
+  const event = await createEvent(owner);
+  const joinResult = await owner.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: owner.userId, status: "considering" });
+  expect(joinResult.error).toBeNull();
+  const deleteResult = await owner.client
+    .from("events")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", event.id);
+  expect(deleteResult.error).toBeNull();
+
+  const { error } = await owner.client
+    .from("event_participants")
+    .update({ status: "declined" })
+    .eq("event_id", event.id)
+    .eq("user_id", owner.userId);
+  expect(error).toBeNull();
+
+  const { data } = await owner.client
+    .from("event_participants")
+    .select("status")
+    .eq("event_id", event.id)
+    .eq("user_id", owner.userId)
+    .single();
+  expect(data?.status).toBe("declined");
+});
+
+test("削除済みイベントでも既存の参加登録は取りやめられる", async () => {
+  const owner = await createTestUser();
+  const event = await createEvent(owner);
+  const joinResult = await owner.client
+    .from("event_participants")
+    .insert({ event_id: event.id, user_id: owner.userId, status: "considering" });
+  expect(joinResult.error).toBeNull();
+  const deleteResult = await owner.client
+    .from("events")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", event.id);
+  expect(deleteResult.error).toBeNull();
+
+  const { error } = await owner.client
+    .from("event_participants")
+    .delete()
+    .eq("event_id", event.id)
+    .eq("user_id", owner.userId);
+  expect(error).toBeNull();
+
+  const { data } = await owner.client
+    .from("event_participants")
+    .select()
+    .eq("event_id", event.id)
+    .eq("user_id", owner.userId);
+  expect(data).toHaveLength(0);
+});
+
 test("本人は自分の参加ステータスを変更できる", async () => {
   const [owner, self] = await Promise.all([createTestUser(), createTestUser()]);
   const event = await createEvent(owner);
