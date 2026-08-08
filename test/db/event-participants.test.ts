@@ -1,5 +1,5 @@
 import { expect, test } from "vitest";
-import { createEvent, createTestUser } from "./helpers";
+import { createEvent, createTestUser, softDeleteEvent } from "./helpers";
 
 test("自分で参加登録できる", async () => {
   const [owner, self] = await Promise.all([createTestUser(), createTestUser()]);
@@ -185,11 +185,7 @@ test("削除済みイベントには他人を招待できない(参加登録済�
   expect(joinResult.error).toBeNull();
 
   // 非オーナー参加者がいないので、この論理削除は成功する(guard_event_deletion)。
-  const deleteResult = await owner.client
-    .from("events")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", event.id);
-  expect(deleteResult.error).toBeNull();
+  await softDeleteEvent(owner, event.id);
 
   const { error } = await owner.client.from("event_participants").insert({
     event_id: event.id,
@@ -215,11 +211,7 @@ test("削除済みイベントには他人を招待できない(参加登録済�
 test("削除済みイベントには自分で参加登録できない(オーナーであっても)", async () => {
   const owner = await createTestUser();
   const event = await createEvent(owner);
-  const deleteResult = await owner.client
-    .from("events")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", event.id);
-  expect(deleteResult.error).toBeNull();
+  await softDeleteEvent(owner, event.id);
 
   // オーナーは削除後もこのイベントを見られる。つまり「見えないから登録できない」のではなく、
   // INSERTポリシーが弾いていることを確認している。
@@ -249,11 +241,7 @@ test("削除済みイベントには支出を持つユーザーも参加登録�
     .from("expenses")
     .insert({ user_id: spender.userId, event_id: event.id, category: "ticket" });
   expect(expenseResult.error).toBeNull();
-  const deleteResult = await owner.client
-    .from("events")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", event.id);
-  expect(deleteResult.error).toBeNull();
+  await softDeleteEvent(owner, event.id);
 
   const { data: visible } = await spender.client.from("events").select().eq("id", event.id);
   expect(visible).toHaveLength(1);
@@ -281,11 +269,7 @@ test("削除済みイベントでも既存の参加行のステータスは変�
     .from("event_participants")
     .insert({ event_id: event.id, user_id: owner.userId, status: "considering" });
   expect(joinResult.error).toBeNull();
-  const deleteResult = await owner.client
-    .from("events")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", event.id);
-  expect(deleteResult.error).toBeNull();
+  await softDeleteEvent(owner, event.id);
 
   const { error } = await owner.client
     .from("event_participants")
@@ -310,11 +294,7 @@ test("削除済みイベントでも既存の参加登録は取りやめられ�
     .from("event_participants")
     .insert({ event_id: event.id, user_id: owner.userId, status: "considering" });
   expect(joinResult.error).toBeNull();
-  const deleteResult = await owner.client
-    .from("events")
-    .update({ deleted_at: new Date().toISOString() })
-    .eq("id", event.id);
-  expect(deleteResult.error).toBeNull();
+  await softDeleteEvent(owner, event.id);
 
   const { error } = await owner.client
     .from("event_participants")
