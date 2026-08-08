@@ -142,7 +142,9 @@ mainはRulesetで保護されており、リポジトリ管理者(あなた)の�
 - **PRは分けない。**ブランチとDraft PRは1つのまま、下位モデルが続きをpushする。
   Sub-issueは作業の追跡単位であってPRの単位ではない(分けると、実装途中で分担する
   ケースを表現できなくなる)
-- Projectの `Parent issue` / `Sub-issues progress` は、親子関係を付ければ自動で入る
+- Projectの `Parent issue` / `Sub-issues progress` はGitHubが親子関係から導出する列で、
+  手で設定しない。API(`gh project item-list` / GraphQLの `fieldValues`)では値が返らないため、
+  紐づけの確認は `gh api repos/{owner}/{repo}/issues/{parent_number}/sub_issues` で行う
 
 ```bash
 # 1. 子Issueを作る(ラベル・Project登録は通常どおり)
