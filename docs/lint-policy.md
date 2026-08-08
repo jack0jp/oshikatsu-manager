@@ -116,12 +116,16 @@ mcp/ ──┘
 
 ```text
 filter find findIndex findLast findLastIndex flatMap
-every some sort toSorted reduce reduceRight
+every some includes indexOf sort toSorted reduce reduceRight
 ```
 
 `.map()` は描画のための変換として正当なので除いてある。引っかかったら
 `common/` のpure関数に切り出す(`CLAUDE.md`「ルールをpure関数に切り出す」の
 「フィルタ、並び順、検証、集計、権限判定、日付計算」がそのまま対象)。
+
+`includes` / `indexOf` を含めているのは、`ALLOWED_IDS.includes(userId)` が
+`ALLOWED_IDS.some((id) => id === userId)` と意味的に同じ**権限判定**だからである。
+片方だけ止めても、書きやすいほうへ逃げられるだけで抜け道になる。
 
 **`mcp/` も対象に含めている。**`app/` と同じく `common/` を経由せず `lib/` を直接叩いて
 判断する余地があり、そちらだけ古いルールで動き続けるのがこのリポジトリで最も痛い壊れ方
@@ -164,8 +168,13 @@ every some sort toSorted reduce reduceRight
 
 **`no-restricted-syntax` はメソッド名しか見ていない。**誤検知とすり抜けが両方ある。
 
-- 誤検知: 配列でないオブジェクトの `.find()` や `.sort()` も止まる。`app/` / `mcp/` に
-  そういう対象が出てきたら、インラインでdisableせず「例外の作法」に従って
+- 誤検知: 配列でないオブジェクトの `.find()` や `.sort()` も止まる。
+  **特に文字列の `.includes()` / `.indexOf()`**(`pathname.includes("/events")` など)は
+  `app/` で普通に書きたくなるが、レシーバの型を見ていないので止まる。
+  それでも対象に入れているのは、配列のメンバーシップ判定が権限判定そのものだからで、
+  「厳しすぎて例外が出る」ほうが「判断が静かに `app/` に残る」より戻しやすいという
+  非対称性による。引っかかったらまず `common/` に切り出せないか考え、
+  本当に表示の都合なら、インラインでdisableせず「例外の作法」に従って
   設定ファイルに理由付きで置く
 - すり抜け: ブラケット記法(`rows["filter"](fn)`)や動的なメソッド名では検出できない。
   同様に、動的importのモジュール名が文字列リテラルでない場合

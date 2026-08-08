@@ -89,6 +89,10 @@ const MESSAGES = {
 // 正当なので除く。`lib/` には掛けない: PostgRESTのクエリビルダが `.filter()` を持つため
 // (`supabase.from(...).select().filter("col", "eq", v)`)、同じ名前で誤検知する。
 // lib/ 側は上の「common/ の判断ロジックをruntime importしない」制約で押さえる。
+// `includes` / `indexOf` も入れる。`ALLOWED_IDS.includes(userId)` は
+// `ALLOWED_IDS.some((id) => id === userId)` と意味的に同じ権限判定で、
+// 後者だけ止めても抜け道になる。文字列に対する `.includes()` まで巻き込むが、
+// 「厳しすぎて例外が出る」ほうが「判断が静かに app/ に残る」より戻しやすい。
 const JUDGEMENT_ARRAY_METHODS = [
   "filter",
   "find",
@@ -98,6 +102,8 @@ const JUDGEMENT_ARRAY_METHODS = [
   "flatMap",
   "every",
   "some",
+  "includes",
+  "indexOf",
   "sort",
   "toSorted",
   "reduce",
