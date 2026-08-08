@@ -61,3 +61,33 @@ export const createEvent = async (
   }
   return data;
 };
+
+/**
+ * イベントをオーナー視点で論理削除し、実際に `deleted_at` が入ったことまで確認する。
+ *
+ * UPDATEは`error`が`null`でも「USING句で対象行が0件に絞られただけ」の可能性があり、
+ * それだけでは削除できたことにならない(docs/permissions.md「RLS検証の必須要件」2)。
+ * 「削除済みイベントに対して〜」を検証するテストの前提条件が黙って崩れると、
+ * テストは緑のまま別のものを検証してしまうため、保存後の値を読み直して確かめる。
+ */
+export const softDeleteEvent = async (owner: TestUser, eventId: string): Promise<void> => {
+  const { error } = await owner.client
+    .from("events")
+    .update({ deleted_at: new Date().toISOString() })
+    .eq("id", eventId);
+  if (error) {
+    throw new Error(`イベントの論理削除に失敗しました: ${error.message}`);
+  }
+
+  const { data, error: readError } = await owner.client
+    .from("events")
+    .select("deleted_at")
+    .eq("id", eventId)
+    .single();
+  if (readError || !data) {
+    throw new Error(`論理削除の確認に失敗しました: ${readError?.message ?? "unknown error"}`);
+  }
+  if (data.deleted_at === null) {
+    throw new Error(`イベント ${eventId} の deleted_at が設定されていません`);
+  }
+};

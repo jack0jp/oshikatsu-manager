@@ -139,7 +139,7 @@ Supabaseもブラウザも要らないので、フェーズ1と並行して進�
 
 | ファイル | 内容 | 出どころ |
 | --- | --- | --- |
-| `common/permissions.ts` | user_id・オーナーID・参加登録有無から操作可否。招待可否(`canInviteToEvent`)のみ、issue #34 の決定に伴いフェーズ1で先行実装済み | permissions.md の権限マトリクス |
+| `common/permissions.ts` | user_id・オーナーID・参加登録有無から操作可否。参加登録可否(`canJoinEvent`)と招待可否(`canInviteToEvent`)のみ、issue #34 / #54 の決定に伴いフェーズ1で先行実装済み | permissions.md の権限マトリクス |
 | `common/deletion.ts` | 実績の有無 × 削除の種類 → 支出データの扱い | prd 4.6 の表(4通り) |
 | `common/budget.ts` | 期間/ジャンルの絞り込み、合算、差分、消化率 | prd 4.4 |
 | `common/visibility.ts` | あるユーザーから見える参加情報の絞り込み | prd 4.5 |
