@@ -103,8 +103,11 @@ mcp/ ──┘
 | `mcp/` | `app/` / Next.js・React系 / `@supabase/*` | stdioサーバーがNext.jsを丸ごと読み込むのを防ぐ |
 
 「Next.js・React系」は `next` `next/**` `next-*` `next-*/**` `react` `react/**`
-`react-*` `react-*/**` を指す。`next-auth` `react-hook-form` のようなハイフン系の
-パッケージ名は `next/**` `react/**` ではマッチしないので、別に列挙している。
+`react-*` `react-*/**` `@next/*` `@next/**` `@react-*/*` `@react-*/**` を指す。
+`next-auth` `react-hook-form` のようなハイフン系や、`@next/env` `@react-three/fiber` の
+ようなスコープ付きは `next/**` `react/**` ではマッチしないので、別に列挙している。
+**パッケージ名の形が1つ増えるたびに穴が開く種類の設定**なので、
+足すときは静的import側(グロブ)と動的import側(正規表現)を必ず対で直す。
 
 `app/` から `lib/` へのimportは**禁止していない。**`app/` が `lib/` のクエリ関数を呼ぶこと自体は
 正当なI/O呼び出しで、これを塞ぐと今度はSupabaseクライアントを直接握ったクエリが `app/` に

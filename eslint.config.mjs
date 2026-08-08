@@ -42,7 +42,8 @@ const layer = (dir) => [`@/${dir}`, `@/${dir}/**`, `../**/${dir}`, `../**/${dir}
 // パッケージ側も `paths` ではなく `patterns` で指定する。`paths` は完全一致しか見ないため、
 // `next` を止めても `next/headers` がすり抜ける。
 // `next-*` / `react-*` まで含めるのは、`next-auth` `react-hook-form` のようなハイフン系が
-// `next/**` `react/**` ではマッチせず抜けるため。
+// `next/**` `react/**` ではマッチせず抜けるため。同じ理由でスコープ付きの
+// `@next/env` `@react-three/fiber` も別に並べる(`next` `react` で始まらない)。
 const SUPABASE_CLIENT_PACKAGES = ["@supabase/*", "@supabase/**"];
 const WEB_FRAMEWORK_PACKAGES = [
   "next",
@@ -53,6 +54,10 @@ const WEB_FRAMEWORK_PACKAGES = [
   "react/**",
   "react-*",
   "react-*/**",
+  "@next/*",
+  "@next/**",
+  "@react-*/*",
+  "@react-*/**",
 ];
 
 const MESSAGES = {
@@ -124,7 +129,7 @@ const judgementArraySyntax = JUDGEMENT_ARRAY_METHODS.map((method) => ({
 // 対で管理する。片方だけ直すと、そちらだけがすり抜ける。
 const layerModuleRegex = (dir) => String.raw`/^(@\/|\.\.\/(.*\/)?)${dir}(\/|$)/`;
 const SUPABASE_MODULE_REGEX = String.raw`/^@supabase\//`;
-const WEB_FRAMEWORK_MODULE_REGEX = String.raw`/^(next|react)([\/-]|$)/`;
+const WEB_FRAMEWORK_MODULE_REGEX = String.raw`/^((next|react)([\/-]|$)|@(next\/|react-))/`;
 
 const dynamicImportSyntax = (moduleRegex, message) => ({
   selector: `ImportExpression > Literal[value=${moduleRegex}]`,
