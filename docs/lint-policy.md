@@ -164,6 +164,19 @@ every some includes indexOf sort toSorted reduce reduceRight
 `lib/` 内での `.reduce()` による集計は機械では止まらない。`lib/` 側は
 「`common/` を値としてimportしない」制約だけで押さえている。
 
+**間接依存は見ていない。**`no-restricted-imports` が見るのはそのファイルに書かれた
+import文だけで、依存グラフは辿らない。特に効いてくるのが `mcp/` のNext.js禁止で、
+`lib/` にはフレームワークの制約を掛けていない(Supabaseのサーバークライアントは
+`next/headers` の `cookies()` を使うのが定番なので、掛けられない)。
+したがって **`lib/` のあるファイルが `next/headers` に依存していると、`mcp/` がそれを
+許可された経路でimportするだけでNext.jsを引きずり込む。**lintは緑のまま、
+フェーズ5で実行時に初めて顕在化する。
+
+対処はフェーズ3で `lib/` にSupabaseクライアントを置くときに行う。
+**Next.js専用APIに触れるファイルをパスで分離し(例: `lib/web/`)、
+`mcp/` からそのパスへのimportをこの節のルールに1行追加して禁止する。**
+今の時点で `lib/` は空なので、置き場所を決めるのはフェーズ3の作業に含める。
+
 **層と同名のサブディレクトリへの相対importは誤検知する。**`lib/a/b.ts` から
 `../common/x`(= `lib/common/x`)と書くと、トップレベルの `common/` への
 層越えと区別が付かず止まる。層と同じ名前のサブディレクトリはそもそも紛らわしいので、
