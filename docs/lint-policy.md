@@ -77,6 +77,74 @@ typescript-eslintで `strict` を選んでいるのは、`any` まわりや非nu
 アサーションのないテストと、握りつぶしたcatchはCIで止める。
 以前は人間が目で見つけていたもの。
 
+### 層の境界 (`common/` / `lib/` / `app/` / `mcp/`)
+
+`CLAUDE.md`「ディレクトリ構成」が定める依存の向きを、`no-restricted-imports` と
+`no-restricted-syntax` で固定する(issue #43)。**向きが逆でもTypeScriptは通り、テストも緑になる。**
+人間がdiffを読まない前提では、ここを機械が止めないと誰も気づかない。
+
+許す向きは1方向だけ。
+
+```text
+app/ ──┐                     app/ と mcp/ は同じ操作の2経路。互いにimportしない
+       ├──> common/ (判断)
+mcp/ ──┘                     common/ はどこにも依存しない(npmの純粋な
+       │                     ユーティリティを除く)
+app/ ──┤
+       ├──> lib/ (I/O) ──> common/ は型だけ (`import type`)
+mcp/ ──┘
+```
+
+| 層 | 禁止するimport | 理由 |
+| --- | --- | --- |
+| `common/` | `app/` `lib/` `mcp/` / `next*` `react*` / `@supabase/*` | 判断ロジック層。何かに依存した瞬間に「Supabaseもブラウザも無しに全ルールをテストできる」(`docs/roadmap.md` フェーズ2の完了条件)が壊れる |
+| `lib/` | `app/` `mcp/` / `common/` の値としてのimport(`import type` は可) | I/O層にルールを持たせない。呼び出し側に依存させない |
+| `app/` | `mcp/` / `@supabase/*` | クエリは `lib/` に置く。2経路を直結させない |
+| `mcp/` | `app/` / `next*` `react*` / `@supabase/*` | stdioサーバーがNext.jsを丸ごと読み込むのを防ぐ |
+
+`app/` から `lib/` へのimportは**禁止していない。**`app/` が `lib/` のクエリ関数を呼ぶこと自体は
+正当なI/O呼び出しで、これを塞ぐと今度はSupabaseクライアントを直接握ったクエリが `app/` に
+生えるだけになる。禁止したいのは「importすること」ではなく「結果を使って判断すること」である。
+
+**だからimportの向きだけでは足りない。**判断ロジックの実体である配列操作を、消費側の2層
+(`app/` と `mcp/`)で `no-restricted-syntax` により禁止する。`docs/roadmap.md` フェーズ3の
+「`app/` から `lib/` のクエリ結果を直接フィルタ・集計するコード」を実際に捕まえているのはこちら。
+
+```text
+filter find findIndex findLast findLastIndex flatMap
+every some sort toSorted reduce reduceRight
+```
+
+`.map()` は描画のための変換として正当なので除いてある。引っかかったら
+`common/` のpure関数に切り出す(`CLAUDE.md`「ルールをpure関数に切り出す」の
+「フィルタ、並び順、検証、集計、権限判定、日付計算」がそのまま対象)。
+
+**`mcp/` も対象に含めている。**`app/` と同じく `common/` を経由せず `lib/` を直接叩いて
+判断する余地があり、そちらだけ古いルールで動き続けるのがこのリポジトリで最も痛い壊れ方
+(`CLAUDE.md`「MCPサーバーとWeb UIは同じ操作を2経路持つ」)。着手時点で `mcp/` は空なので、
+含めるコストはゼロだった。
+
+#### 設定を書くときの落とし穴
+
+- **パッケージ名も `paths` ではなく `patterns` に書く。**`paths` は完全一致しか見ないため、
+  `next` を禁止しても `next/headers` がすり抜ける
+- **相対パスも列挙する。**内部モジュールは `@/` エイリアスで書く規約だが、`../../lib/x` と
+  書けばエイリアスのパターンをすり抜ける。両方の表記を並べている(相対は5階層まで)。
+  逆に `**/lib/**` のような広いパターンは使わない。npmパッケージの深いパスを巻き込む
+- **`lib/` の `common/` 制約だけ `@typescript-eslint/no-restricted-imports` を使う。**
+  `allowTypeImports` は拡張ルール側にしかない。型を二重定義しない方針(上記「型の出どころ」)と
+  両立させるため、型のimportは通す必要がある
+
+#### 残っているギャップ
+
+**`lib/` には構文ルールを掛けていない。**PostgRESTのクエリビルダが `.filter()` を持つため
+(`supabase.from(...).select().filter("col", "eq", v)`)、同じ名前で誤検知する。
+`lib/` 内での `.reduce()` による集計は機械では止まらない。`lib/` 側は
+「`common/` を値としてimportしない」制約だけで押さえている。
+
+導入時点(issue #43)で `app/` はNext.jsの雛形のみ、`lib/` と `mcp/` は空だったため、
+違反は1件もなく、drainを挟まず**最初からerror**で入れた。
+
 ### markdown (`docs/**/*.md`, `.claude/skills/**/*.md`, ルート直下 `*.md`)
 
 `markdownlint-cli2`(設定は `.markdownlint-cli2.jsonc`)を `yarn lint` に統合している。
