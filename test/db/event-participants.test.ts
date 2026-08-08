@@ -215,7 +215,11 @@ test("削除済みイベントには自分で参加登録できない(オーナ�
 
   // オーナーは削除後もこのイベントを見られる。つまり「見えないから登録できない」のではなく、
   // INSERTポリシーが弾いていることを確認している。
-  const { data: visible } = await owner.client.from("events").select().eq("id", event.id);
+  const { data: visible, error: visibleError } = await owner.client
+    .from("events")
+    .select()
+    .eq("id", event.id);
+  expect(visibleError).toBeNull();
   expect(visible).toHaveLength(1);
 
   const { error } = await owner.client
@@ -243,7 +247,11 @@ test("削除済みイベントには支出を持つユーザーも参加登録�
   expect(expenseResult.error).toBeNull();
   await softDeleteEvent(owner, event.id);
 
-  const { data: visible } = await spender.client.from("events").select().eq("id", event.id);
+  const { data: visible, error: visibleError } = await spender.client
+    .from("events")
+    .select()
+    .eq("id", event.id);
+  expect(visibleError).toBeNull();
   expect(visible).toHaveLength(1);
 
   const { error } = await spender.client
