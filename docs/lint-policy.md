@@ -141,6 +141,14 @@ every some sort toSorted reduce reduceRight
 - **`lib/` の `common/` 制約だけ `@typescript-eslint/no-restricted-imports` を使う。**
   `allowTypeImports` は拡張ルール側にしかない。型を二重定義しない方針(上記「型の出どころ」)と
   両立させるため、型のimportは通す必要がある
+- **動的 `import()` は `no-restricted-imports` の対象外。**このルールは静的なimport宣言しか
+  見ないため、`await import("react")` と書けば全部すり抜ける。Next.jsではコード分割で
+  動的importが自然に出てくるので、意図的な回避というより「うっかり踏む」経路になる。
+  同じ制約を `no-restricted-syntax` の `ImportExpression` セレクタにも掛けている。
+  **こちらはグロブではなく正規表現で書くことになるので、グロブ側と対で管理する。**
+  片方だけ直すと、そちらだけがすり抜ける
+- **`files` に拡張子を書き並べない。**`app/**/*.ts` だけだと `.mts` `.cts` や素のJSが
+  対象外になる。拡張子リストを1か所に置いて組み立てる
 
 #### 残っているギャップ
 
@@ -160,8 +168,16 @@ every some sort toSorted reduce reduceRight
   そういう対象が出てきたら、インラインでdisableせず「例外の作法」に従って
   設定ファイルに理由付きで置く
 - すり抜け: ブラケット記法(`rows["filter"](fn)`)や動的なメソッド名では検出できない。
+  同様に、動的importのモジュール名が文字列リテラルでない場合
+  (`import(someVariable)`、テンプレートリテラル)も検出できない。
   ここは「うっかり書いてしまう層越え」を止めるための仕組みであって、
   意図的な回避を防ぐものではないと割り切っている
+
+**`.mts` ファイルは `yarn lint` 自体がクラッシュする。**層の境界とは別の既存の問題で、
+型情報を要するルールのブロックが `**/*.mts` を対象にしている一方、
+`eslint-config-next` のパーサーが `.mts` に対して `parserOptions.project` を
+転送しないため。issue #43 の時点では `.mts` ファイルが1つも無いため実害はなく、
+別Issueに切り出した(issue #61。この節の制約自体は `.mts` `.cts` や素のJSも対象にしてある)。
 
 導入時点(issue #43)で `app/` はNext.jsの雛形のみ、`lib/` と `mcp/` は空だったため、
 違反は1件もなく、drainを挟まず**最初からerror**で入れた。

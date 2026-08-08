@@ -104,9 +104,36 @@ const JUDGEMENT_ARRAY_METHODS = [
   "reduceRight",
 ];
 
+// 判断ロジックの持ち出しを検出する構文。`.map()` は描画のための変換として正当なので除く。
+const judgementArraySyntax = JUDGEMENT_ARRAY_METHODS.map((method) => ({
+  selector: `CallExpression[callee.type="MemberExpression"][callee.property.name="${method}"]`,
+  message: `.${method}() — ${MESSAGES.noJudgementLogic}`,
+}));
+
+// `no-restricted-imports` は静的な import 宣言しか見ない。動的 import(`await import("react")`)は
+// 素通りするため、同じ制約を `no-restricted-syntax` でも掛ける。Next.jsではコード分割で
+// 動的importが自然に出てくるので、意図的な回避ではなく「うっかり踏む」経路になる。
+//
+// パターンはグロブではなく正規表現で書くことになるので、上のグロブと同じ範囲を指すように
+// 対で管理する。片方だけ直すと、そちらだけがすり抜ける。
+const layerModuleRegex = (dir) => String.raw`/^(@\/|\.\.\/(.*\/)?)${dir}(\/|$)/`;
+const SUPABASE_MODULE_REGEX = String.raw`/^@supabase\//`;
+const WEB_FRAMEWORK_MODULE_REGEX = String.raw`/^(next|react)([\/-]|$)/`;
+
+const dynamicImportSyntax = (moduleRegex, message) => ({
+  selector: `ImportExpression > Literal[value=${moduleRegex}]`,
+  message: `dynamic import() — ${message}`,
+});
+
+// `.ts` / `.tsx` だけだと `.mts` `.cts` や素のJSがルールの対象外になる。
+// 拡張子の増減で穴が空かないよう、1か所で組み立てる。
+const SOURCE_EXTENSIONS = ["ts", "tsx", "mts", "cts", "js", "jsx", "mjs", "cjs"];
+const layerFiles = (...dirs) =>
+  dirs.flatMap((dir) => SOURCE_EXTENSIONS.map((ext) => `${dir}/**/*.${ext}`));
+
 const layerBoundaries = [
   {
-    files: ["common/**/*.ts", "common/**/*.tsx"],
+    files: layerFiles("common"),
     rules: {
       "no-restricted-imports": [
         "error",
@@ -125,11 +152,21 @@ const layerBoundaries = [
           ],
         },
       ],
+      "no-restricted-syntax": [
+        "error",
+        ...[
+          layerModuleRegex("app"),
+          layerModuleRegex("lib"),
+          layerModuleRegex("mcp"),
+          SUPABASE_MODULE_REGEX,
+          WEB_FRAMEWORK_MODULE_REGEX,
+        ].map((regex) => dynamicImportSyntax(regex, MESSAGES.commonPure)),
+      ],
     },
   },
 
   {
-    files: ["lib/**/*.ts", "lib/**/*.tsx"],
+    files: layerFiles("lib"),
     rules: {
       "@typescript-eslint/no-restricted-imports": [
         "error",
@@ -148,11 +185,18 @@ const layerBoundaries = [
           ],
         },
       ],
+      "no-restricted-syntax": [
+        "error",
+        // 動的importに `import type` は無いので、ここでは型の例外を作らない。
+        dynamicImportSyntax(layerModuleRegex("common"), MESSAGES.libNoRules),
+        dynamicImportSyntax(layerModuleRegex("app"), MESSAGES.libNoCallers),
+        dynamicImportSyntax(layerModuleRegex("mcp"), MESSAGES.libNoCallers),
+      ],
     },
   },
 
   {
-    files: ["app/**/*.ts", "app/**/*.tsx"],
+    files: layerFiles("app"),
     rules: {
       "no-restricted-imports": [
         "error",
@@ -163,11 +207,20 @@ const layerBoundaries = [
           ],
         },
       ],
+      "no-restricted-syntax": [
+        "error",
+        dynamicImportSyntax(SUPABASE_MODULE_REGEX, MESSAGES.noSupabaseOutsideLib),
+        dynamicImportSyntax(layerModuleRegex("mcp"), MESSAGES.twoRoutes),
+        // importの向きだけでは「lib/ から受け取った配列を app/ で絞り込む」形の層越えを
+        // 捕まえられない(app/ が lib/ をimportすること自体は正当なI/O呼び出しのため)。
+        // 判断ロジックの実体である配列操作そのものを、消費側で禁止する。
+        ...judgementArraySyntax,
+      ],
     },
   },
 
   {
-    files: ["mcp/**/*.ts", "mcp/**/*.tsx"],
+    files: layerFiles("mcp"),
     rules: {
       "no-restricted-imports": [
         "error",
@@ -179,21 +232,12 @@ const layerBoundaries = [
           ],
         },
       ],
-    },
-  },
-
-  // importの向きだけでは「lib/ から受け取った配列を app/ で絞り込む」形の層越えを
-  // 捕まえられない(app/ が lib/ をimportすること自体は正当な I/O 呼び出しのため)。
-  // 判断ロジックの実体である配列操作そのものを、消費側の2層で禁止する。
-  {
-    files: ["app/**/*.ts", "app/**/*.tsx", "mcp/**/*.ts", "mcp/**/*.tsx"],
-    rules: {
       "no-restricted-syntax": [
         "error",
-        ...JUDGEMENT_ARRAY_METHODS.map((method) => ({
-          selector: `CallExpression[callee.type="MemberExpression"][callee.property.name="${method}"]`,
-          message: `.${method}() — ${MESSAGES.noJudgementLogic}`,
-        })),
+        dynamicImportSyntax(SUPABASE_MODULE_REGEX, MESSAGES.noSupabaseOutsideLib),
+        dynamicImportSyntax(WEB_FRAMEWORK_MODULE_REGEX, MESSAGES.mcpNoFramework),
+        dynamicImportSyntax(layerModuleRegex("app"), MESSAGES.twoRoutes),
+        ...judgementArraySyntax,
       ],
     },
   },
